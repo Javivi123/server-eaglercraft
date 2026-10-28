@@ -1,0 +1,14 @@
+[
+  {
+    "uuid": "c1e49986-3900-3984-9a16-e93be52fdf91",
+    "name": "Xavi",
+    "level": 4,
+    "bypassesPlayerLimit": false
+  },
+  {
+    "uuid": "65d14235-bec5-3c4c-900e-0294c67991ab",
+    "name": "tu_nombre_de_jugador",
+    "level": 4,
+    "bypassesPlayerLimit": false
+  }
+]

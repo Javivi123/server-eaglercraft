@@ -1,0 +1,30 @@
+voice_servers_no_passwd:
+- 'stun:stun.cloudflare.com:3478'
+- 'stun:stun.nextcloud.com:443'
+- 'stun:stun.l.google.com:19302'
+- 'stun:stun.cloudflare.com:443'
+voice_servers_passwd:
+  cf_turn_1:
+    url: 'turn:turn.cloudflare.com:3478?transport=udp'
+    username: 'g003551513277b5232ccf48821f104d3034360120e48fb31896f2ceaa4210aa2'
+    password: '8e149c797f1831e37849018a37e70dc28219f31d006e186014df48533404b5d6'
+  cf_turn_2:
+    url: 'turn:turn.cloudflare.com:3478?transport=tcp'
+    username: 'g003551513277b5232ccf48821f104d3034360120e48fb31896f2ceaa4210aa2'
+    password: '8e149c797f1831e37849018a37e70dc28219f31d006e186014df48533404b5d6'
+  cf_turn_3:
+    url: 'turns:turn.cloudflare.com:5349?transport=tcp'
+    username: 'g003551513277b5232ccf48821f104d3034360120e48fb31896f2ceaa4210aa2'
+    password: '8e149c797f1831e37849018a37e70dc28219f31d006e186014df48533404b5d6'
+  cf_turn_4:
+    url: 'turn:turn.cloudflare.com:443?transport=udp'
+    username: 'g003551513277b5232ccf48821f104d3034360120e48fb31896f2ceaa4210aa2'
+    password: '8e149c797f1831e37849018a37e70dc28219f31d006e186014df48533404b5d6'
+  cf_turn_5:
+    url: 'turn:turn.cloudflare.com:80?transport=tcp'
+    username: 'g003551513277b5232ccf48821f104d3034360120e48fb31896f2ceaa4210aa2'
+    password: '8e149c797f1831e37849018a37e70dc28219f31d006e186014df48533404b5d6'
+  cf_turn_6:
+    url: 'turns:turn.cloudflare.com:443?transport=tcp'
+    username: 'g003551513277b5232ccf48821f104d3034360120e48fb31896f2ceaa4210aa2'
+    password: '8e149c797f1831e37849018a37e70dc28219f31d006e186014df48533404b5d6'

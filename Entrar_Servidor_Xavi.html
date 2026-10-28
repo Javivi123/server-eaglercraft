@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚀 Lanzador Oficial — Servidor Minecraft de Xavi</title>
+<style>
+  :root {
+    --bg: #090d16;
+    --card: #131b2e;
+    --border: #23314e;
+    --green: #10b981;
+    --blue: #3b82f6;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body {
+    margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #172554 0%, #090d16 70%);
+    color: var(--text); display: flex; justify-content: center; align-items: center; padding: 20px;
+  }
+  .box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    max-width: 560px; width: 100%; padding: 32px; text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px;
+    border-radius: 999px; font-weight: 800; font-size: 13px; margin-bottom: 16px;
+    background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid #3b82f6;
+  }
+  .badge.online { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: #10b981; }
+  .badge.offline { background: rgba(244, 63, 94, 0.15); color: #fb7185; border-color: #f43f5e; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  h1 { margin: 0 0 8px 0; font-size: 26px; font-weight: 800; }
+  p.sub { color: var(--muted); font-size: 14px; margin: 0 0 24px 0; line-height: 1.5; }
+  .url-box {
+    background: #090d16; border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; margin-bottom: 20px; text-align: left;
+  }
+  .url-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); letter-spacing: 0.8px; }
+  .url-val {
+    font-family: 'Consolas', monospace; font-size: 15px; color: #38bdf8;
+    font-weight: 700; margin-top: 6px; word-break: break-all; user-select: all;
+  }
+  .btn {
+    width: 100%; padding: 15px 20px; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 800; cursor: pointer; display: flex;
+    justify-content: center; align-items: center; gap: 10px;
+    transition: transform 0.15s, filter 0.15s; text-decoration: none; margin-bottom: 12px;
+  }
+  .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+  .btn-play { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35); }
+  .btn-copy { background: #1e293b; color: white; border: 1px solid #334155; }
+  .school-box {
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .chip {
+    background: #090d16; border: 1px solid var(--border); padding: 4px 10px;
+    border-radius: 8px; font-family: monospace; color: #fbbf24; cursor: pointer;
+  }
+  .toast {
+    display: none; margin-top: 12px; padding: 10px; border-radius: 10px;
+    background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; font-weight: 700; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <div id="statusBadge" class="badge"><div class="dot"></div> Buscando túnel activo de hoy...</div>
+  <h1>🛡️ Servidor Minecraft de Xavi</h1>
+  <p class="sub">Este lanzador detecta automáticamente la dirección Cloudflare del día que salta la VPN del colegio sin que tengas que pedir el enlace por WhatsApp.</p>
+
+  <div class="url-box">
+    <div class="url-label">🎮 Dirección Multijugador de Hoy (Para Añadir Servidor en Eaglercraft):</div>
+    <div id="wsAddress" class="url-val">Cargando dirección wss://...</div>
+  </div>
+
+  <button id="btnCopy" class="btn btn-copy" onclick="copyWs()">
+    📋 Copiar dirección WSS para mi Eaglercraft
+  </button>
+
+  <a id="btnPlayWeb" href="#" class="btn btn-play" style="pointer-events:none; opacity:0.5;">
+    🚀 Abrir Eaglercraft Directo en el Navegador
+  </a>
+
+  <div id="toast" class="toast">✅ ¡Copiado al portapapeles! Pégalo (Ctrl+V) en Añadir Servidor en Eaglercraft.</div>
+
+  <div class="school-box">
+    <span>🏫 ¿Estáis en el colegio con el Hotspot de Xavi?</span>
+    <span class="chip" onclick="copyCustom('ws://192.168.137.1:8081')">ws://192.168.137.1:8081 📋</span>
+  </div>
+</div>
+
+<script>
+const TOPIC = 'xavi_cumbres_mc_servidor_oficial';
+let currentWs = '';
+let currentWeb = '';
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 4000);
+}
+
+function copyWs() {
+  if (!currentWs) return;
+  navigator.clipboard.writeText(currentWs);
+  showToast('✅ ¡Copiado: ' + currentWs + '! Pégalo en Añadir Servidor en tu Eaglercraft.');
+}
+
+function copyCustom(txt) {
+  navigator.clipboard.writeText(txt);
+  showToast('✅ ¡Copiada IP del Modo Colegio: ' + txt + '!');
+}
+
+async function fetchLatestTunnel() {
+  const badge = document.getElementById('statusBadge');
+  const wsEl = document.getElementById('wsAddress');
+  const btnPlay = document.getElementById('btnPlayWeb');
+
+  try {
+    const res = await fetch('https://ntfy.sh/' + TOPIC + '/raw?poll=1&since=all&_t=' + Date.now(), {
+      cache: 'no-store'
+    });
+    const text = await res.text();
+    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(l => l.startsWith('wss://') && l.includes('trycloudflare.com'));
+
+    if (lines.length > 0) {
+      currentWs = lines[lines.length - 1];
+      currentWeb = currentWs.replace('wss://', 'https://');
+      wsEl.textContent = currentWs;
+      badge.className = 'badge online';
+      badge.innerHTML = '<div class="dot"></div> 🟢 Túnel Cloudflare Sincronizado';
+      btnPlay.href = currentWeb;
+      btnPlay.style.pointerEvents = 'auto';
+      btnPlay.style.opacity = '1';
+    } else {
+      wsEl.textContent = 'Esperando a que Xavi encienda el servidor en Modo Casa...';
+      badge.className = 'badge offline';
+      badge.innerHTML = '<div class="dot"></div> ⏳ Servidor apagado ahora mismo';
+    }
+  } catch (err) {
+    wsEl.textContent = 'Error al consultar el canal automático. Reintentando...';
+  }
+}
+
+fetchLatestTunnel();
+setInterval(fetchLatestTunnel, 8000);
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+alliances:
+  exitosos:
+    name: exitosos
+    leader: xavi
+    friendlyFire: false
+    openJoin: true
+    kills: 6
+    warsWon: 0
+    members:
+    - xavi
+    enemies: []

@@ -1,0 +1,22 @@
+# Archivos de credenciales y secretos (Protección de cuenta Cloudflare / Metered)
+voice_turn_config.json
+metered_credentials.json
+
+# Cache y Logs temporales
+/cache/
+server/cache/
+server/logs/
+bungee/logs/
+*.log
+*.log.gz
+crash-reports/
+
+# Locks de Minecraft activos
+session.lock
+**/session.lock
+
+# Bases de datos de cache de skins
+*.db
+*.db-journal
+eaglercraft_skins_cache.db
+bungee/eaglercraft_skins_cache.db
