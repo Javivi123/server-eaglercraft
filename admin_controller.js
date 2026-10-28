@@ -555,10 +555,28 @@ function getServerState() {
   } catch (e) {}
 
   let logs = '';
+  let chatMessages = [];
   try {
     if (fs.existsSync(logPath)) {
       const lines = fs.readFileSync(logPath, 'utf8').split(/\r?\n/);
       logs = lines.slice(-70).join('\n');
+      for (const line of lines.slice(-250)) {
+        const chatMatch = line.match(/\[(\d{2}:\d{2}:\d{2})\].*?:\s+<([^>]+)>\s+(.*)/);
+        if (chatMatch) {
+          chatMessages.push({ time: chatMatch[1], user: chatMatch[2], text: chatMatch[3], type: 'chat' });
+          continue;
+        }
+        const joinMatch = line.match(/\[(\d{2}:\d{2}:\d{2})\].*?:\s+([a-zA-Z0-9_]{2,16})\s+(joined the game|left the game)/);
+        if (joinMatch) {
+          const isJoin = joinMatch[3].includes('joined');
+          chatMessages.push({
+            time: joinMatch[1],
+            user: joinMatch[2],
+            text: isJoin ? 'ha entrado al juego' : 'ha salido del juego',
+            type: isJoin ? 'join' : 'leave'
+          });
+        }
+      }
     }
   } catch (e) {}
 
@@ -586,7 +604,7 @@ function getServerState() {
   let honor = {};
   try { if (fs.existsSync(honorPath)) honor = parseHonorYaml(fs.readFileSync(honorPath, 'utf8')); } catch (e) {}
 
-  return { banned, knownPlayers, logs, rules, warnings, alliances, honor };
+  return { banned, knownPlayers, logs, chatMessages, rules, warnings, alliances, honor };
 }
 
 const HTML_PAGE = `<!DOCTYPE html>
@@ -1668,6 +1686,34 @@ function startPanelServer() {
       const htmlContent = fs.existsSync(htmlFile) ? fs.readFileSync(htmlFile, 'utf8') : HTML_PAGE;
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(htmlContent);
+      return;
+    }
+    if (req.method === 'GET' && (reqUrl === '/client' || reqUrl === '/client.html')) {
+      const clientFile = path.join(SERVER_DIR, 'EaglercraftX_1.8_Online_Fix.html');
+      if (fs.existsSync(clientFile)) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(fs.readFileSync(clientFile));
+        return;
+      }
+    }
+    if (req.method === 'POST' && reqUrl === '/api/chat') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', async () => {
+        try {
+          const { message } = JSON.parse(body || '{}');
+          const clean = (message || '').trim();
+          if (clean) {
+            const safeMsg = clean.replace(/"/g, '\\"');
+            await sendRconCommand(`tellraw @a [{"text":"[Admin] Xavi: ","color":"gold","bold":true},{"text":"${safeMsg}","color":"white"}]`);
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (err) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: err.message }));
+        }
+      });
       return;
     }
     if (req.method === 'GET' && reqUrl === '/api/state') {

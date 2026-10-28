@@ -3,499 +3,691 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Consola de Control Total — Servidor de Xavi</title>
+<title>Consola de Control — Servidor Eaglercraft de Xavi</title>
 <style>
   :root {
     --bg: #090d16;
-    --card: #131b2e;
-    --card-hover: #19233c;
-    --border: #23314e;
-    --border-light: #334468;
-    --accent: #3b82f6;
-    --accent-glow: rgba(59, 130, 246, 0.25);
-    --green: #10b981;
-    --green-bg: rgba(16, 185, 129, 0.15);
-    --red: #f43f5e;
-    --red-bg: rgba(244, 63, 94, 0.15);
-    --amber: #f59e0b;
-    --amber-bg: rgba(245, 158, 11, 0.15);
-    --purple: #8b5cf6;
-    --purple-bg: rgba(139, 92, 246, 0.15);
+    --card: #111827;
+    --card-header: #1a2234;
+    --border: #1f2937;
+    --border-light: #374151;
     --text: #f8fafc;
     --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-hover: #0284c7;
+    --green: #10b981;
+    --green-bg: #064e3b;
+    --amber: #f59e0b;
+    --amber-bg: #78350f;
+    --red: #ef4444;
+    --red-bg: #7f1d1d;
   }
-  * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-  body { margin: 0; padding: 20px; background: var(--bg); color: var(--text); }
-  
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 20px;
+    line-height: 1.5;
+  }
+
   /* HEADER */
   .header {
-    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;
-    background: linear-gradient(135deg, #131b2e 0%, #0d1322 100%);
-    padding: 20px 24px; border-radius: 16px; border: 1px solid var(--border);
-    margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
   }
-  .header-info h1 { margin: 0; font-size: 23px; display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -0.5px; }
-  .header-subtitle { color: var(--muted); font-size: 13px; margin-top: 6px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .header-info h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
   .ip-chip {
-    background: #090d16; border: 1px solid var(--border); padding: 4px 10px;
-    border-radius: 8px; font-family: monospace; font-size: 12px; color: #60a5fa; cursor: pointer;
-    transition: background 0.2s, border-color 0.2s; user-select: all;
+    background: #0f172a;
+    border: 1px solid var(--border-light);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: all;
+    transition: all 0.15s ease;
   }
-  .ip-chip:hover { background: #1e293b; border-color: #60a5fa; color: white; }
-  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .ip-chip:hover {
+    border-color: var(--accent);
+    background: #1e293b;
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 
   /* STATUS BADGE */
   .status-badge {
-    padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 13px;
-    display: inline-flex; align-items: center; gap: 8px; letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
   }
-  .online { background: var(--green-bg); color: #34d399; border: 1px solid #10b981; box-shadow: 0 0 12px rgba(16,185,129,0.3); }
-  .offline { background: var(--red-bg); color: #fb7185; border: 1px solid #f43f5e; box-shadow: 0 0 12px rgba(244,63,94,0.3); }
-  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.8s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+  .status-badge.online {
+    background: var(--green-bg);
+    color: #6ee7b7;
+    border: 1px solid #059669;
+  }
+  .status-badge.offline {
+    background: var(--red-bg);
+    color: #fca5a5;
+    border: 1px solid #dc2626;
+  }
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
 
-  /* OVERVIEW SUMMARY STRIP */
+  /* BUTTONS */
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    background: #1f2937;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  button:hover { background: #374151; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-green { background: #059669; color: white; border-color: #047857; }
+  .btn-green:hover { background: #10b981; }
+  .btn-amber { background: #d97706; color: white; border-color: #b45309; }
+  .btn-amber:hover { background: #f59e0b; }
+  .btn-red { background: #dc2626; color: white; border-color: #b91c1c; }
+  .btn-red:hover { background: #ef4444; }
+  .btn-accent { background: #0284c7; color: white; border-color: #0369a1; }
+  .btn-accent:hover { background: #38bdf8; }
+
+  /* METRIC STRIP */
   .status-strip {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px; margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
   }
   .status-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 4px;
-    position: relative; overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
   }
-  .status-card-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); letter-spacing: 0.8px; }
-  .status-card-value { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
+  .status-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .status-card-value {
+    font-size: 15px;
+    font-weight: 700;
+  }
   .tag-green { color: #34d399; }
-  .tag-red { color: #fb7185; }
+  .tag-blue { color: #38bdf8; }
   .tag-amber { color: #fbbf24; }
-  .tag-blue { color: #60a5fa; }
+  .tag-red { color: #f87171; }
   .tag-muted { color: #64748b; }
 
   /* MAIN GRID */
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(370px, 1fr)); gap: 20px; }
+  .main-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+  }
+  .col-12 { grid-column: span 12; }
+  .col-6 { grid-column: span 6; }
+  .col-4 { grid-column: span 4; }
+  @media (max-width: 960px) {
+    .col-6, .col-4 { grid-column: span 12; }
+  }
+
   .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    padding: 20px; display: flex; flex-direction: column; gap: 14px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
-  .card h2 {
-    margin: 0; font-size: 17px; font-weight: 700; display: flex; align-items: center;
-    gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; color: #f1f5f9;
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
-  /* TOGGLE ROW */
+  /* RULE BOX & PILLS */
   .rule-box {
-    background: #0b1120; border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
-    transition: border-color 0.2s;
+    background: #0d131f;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
   }
-  .rule-box:hover { border-color: var(--border-light); }
-  .rule-desc-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-  .rule-desc-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  
+  .rule-desc-title { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+  .rule-desc-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .pill-state {
-    padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 800;
-    text-transform: uppercase; letter-spacing: 0.5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.3px;
   }
-  .pill-on { background: var(--green-bg); color: #34d399; border: 1px solid #10b981; }
-  .pill-off { background: var(--red-bg); color: #fb7185; border: 1px solid #f43f5e; }
+  .pill-on { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+  .pill-off { background: #334155; color: #cbd5e1; border: 1px solid #475569; }
 
-  /* BUTTONS */
-  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
-  button {
-    cursor: pointer; border: none; border-radius: 10px; padding: 10px 16px;
-    font-weight: 700; font-size: 13px; color: white; background: var(--accent);
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    transition: all 0.15s ease;
-  }
-  button:hover { filter: brightness(1.1); transform: translateY(-1px); }
-  button:active { transform: translateY(0); filter: brightness(0.95); }
-  .btn-green { background: #059669; }
-  .btn-green:hover { background: #10b981; }
-  .btn-red { background: #e11d48; }
-  .btn-red:hover { background: #f43f5e; }
-  .btn-amber { background: #d97706; color: #fff; }
-  .btn-amber:hover { background: #f59e0b; }
-  .btn-dark { background: #334155; }
-  .btn-dark:hover { background: #475569; }
-  .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
-  .btn-toggle-action { min-width: 90px; }
-
-  /* INPUTS */
+  /* FORMS & INPUTS */
   input, select {
-    background: #090d16; border: 1px solid var(--border); color: white;
-    padding: 10px 14px; border-radius: 10px; font-size: 13px; outline: none;
-    transition: border-color 0.2s;
+    background: #0d131f;
+    border: 1px solid var(--border-light);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s ease;
   }
-  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-  .input-group { display: flex; gap: 8px; }
-  
-  /* PLAYER LIST ITEMS */
-  .player-card {
-    background: #0b1120; border: 1px solid var(--border); border-radius: 12px;
-    padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
-    gap: 8px; margin-bottom: 8px;
+  input:focus, select:focus { border-color: var(--accent); }
+  .form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* CHAT CONTAINER */
+  .chat-feed {
+    background: #050811;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    height: 240px;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
   }
-  .player-info { display: flex; align-items: center; gap: 10px; }
-  .player-avatar {
-    width: 32px; height: 32px; border-radius: 8px; background: #1e293b;
-    display: flex; align-items: center; justify-content: center; font-weight: 800; color: #60a5fa;
+  .chat-msg {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    line-height: 1.4;
   }
-  .player-name { font-weight: 700; font-size: 14px; }
-  .player-sub { font-size: 11px; color: var(--muted); }
+  .chat-time { font-size: 10px; color: var(--muted); font-family: monospace; }
+  .chat-user { font-weight: 700; color: #38bdf8; }
+  .chat-user.admin { color: #f59e0b; }
+  .chat-text { color: #f1f5f9; word-break: break-word; }
+  .chat-system {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+    padding: 2px 0;
+  }
 
   /* LOG CONSOLE */
   .log-box {
-    background: #050811; color: #38bdf8; font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 12px; padding: 14px; border-radius: 10px; height: 260px;
-    overflow-y: auto; white-space: pre-wrap; border: 1px solid var(--border);
-    line-height: 1.5;
+    background: #050811;
+    color: #38bdf8;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    border: 1px solid var(--border);
+    line-height: 1.4;
   }
-  
-  /* TOAST NOTIFICATION */
-  .toast {
-    position: fixed; bottom: 24px; right: 24px; background: #1e293b;
-    border-left: 5px solid var(--green); color: white; padding: 14px 22px;
-    border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.6);
-    display: none; z-index: 1000; font-weight: 600; font-size: 14px;
-    animation: fadeIn 0.2s ease;
-  }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+  /* PLAYER CARDS */
+  .player-card {
+    background: #0d131f;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .player-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .player-avatar {
+    width: 32px;
+    height: 32px;
+    background: #1e293b;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .player-name { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+  .player-sub { font-size: 11px; color: var(--muted); }
+
+  /* FRIEND CHIPS */
   .friends-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .friend-chip {
-    background: #1e293b; border: 1px solid var(--border-light); padding: 4px 10px;
-    border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-flex;
-    align-items: center; gap: 6px;
+    background: #1e293b;
+    border: 1px solid var(--border-light);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
   .friend-chip button {
-    background: transparent; color: #fb7185; padding: 0; width: 16px; height: 16px;
-    font-size: 12px; border-radius: 50%;
+    background: transparent;
+    color: #fb7185;
+    padding: 0;
+    width: 16px;
+    height: 16px;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
   }
-  .friend-chip button:hover { background: rgba(244,63,94,0.2); }
+  .friend-chip button:hover { color: #f43f5e; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1e293b;
+    border-left: 4px solid var(--green);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    display: none;
+    z-index: 1000;
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  /* RADIO IFRAME HIDDEN */
+  #radioIframeContainer { display: none; }
 </style>
 </head>
 <body>
 
-<!-- TOP HEADER -->
+<!-- HEADER -->
 <div class="header">
   <div class="header-info">
-    <h1>🛡️ Servidor Eaglercraft — Consola de Xavi</h1>
+    <h1>Consola de Control — Servidor Eaglercraft</h1>
     <div class="header-subtitle">
       <span>Mundo: <b>New World (8).epk</b></span>
       <span>•</span>
-      <span id="badgeServerMode" class="ip-chip" style="background:#1e293b; color:#38bdf8; font-weight:700;">Modo: Cargando...</span>
+      <span id="badgeServerMode" class="ip-chip" style="color:var(--accent);">Modo: Cargando...</span>
       <span>•</span>
-      <span>Para ti: <span class="ip-chip" data-copy="ws://localhost:8081" onclick="copyText(this.dataset.copy)">ws://localhost:8081 📋</span></span>
+      <span>Tú: <span class="ip-chip" data-copy="ws://localhost:8081" onclick="copyText(this.dataset.copy)">ws://localhost:8081 📋</span></span>
       <span>•</span>
-      <span id="friendsConnectionBox">Para amigos: <span class="ip-chip">Cargando dirección...</span></span>
+      <span id="friendsConnectionBox">Amigos: <span class="ip-chip">Cargando...</span></span>
     </div>
     <div style="display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap;">
-      <span style="font-size:12px; color:var(--muted); font-weight:600;">Cambiar Modo:</span>
-      <button class="btn-dark btn-sm" id="btnModeCasa" onclick="switchMode('casa')">🏠 Modo Casa (Cloudflare)</button>
-      <button class="btn-dark btn-sm" id="btnModeColegio" onclick="switchMode('colegio')">🏫 Modo Colegio (Hotspot)</button>
-      <button class="btn-dark btn-sm" id="btnModeNgrok" onclick="switchMode('ngrok')">🌐 Modo Ngrok</button>
+      <span style="font-size:12px; color:var(--muted); font-weight:600;">Modo de Red:</span>
+      <button class="btn-sm" id="btnModeCasa" onclick="switchMode('casa')">Modo Casa (Cloudflare)</button>
+      <button class="btn-sm" id="btnModeColegio" onclick="switchMode('colegio')">Modo Colegio (Hotspot)</button>
+      <button class="btn-sm" id="btnModeNgrok" onclick="switchMode('ngrok')">Modo Ngrok</button>
     </div>
   </div>
   <div class="header-actions">
     <div id="statusBadge" class="status-badge offline"><div class="pulse-dot"></div> Conectando...</div>
-    <button id="btnStartServer" class="btn-green" style="display:none;" onclick="startServer()">▶️ Encender Servidor</button>
-    <button id="btnSaveWorld" class="btn-green" onclick="runCmd('guardar')">💾 Guardar Mundo</button>
-    <button id="btnStopServer" class="btn-red" onclick="stopServer()">🛑 Guardar y Apagar Servidor</button>
+    <button id="btnStartServer" class="btn-green" style="display:none;" onclick="startServer()">Encender Servidor</button>
+    <button id="btnSaveWorld" class="btn-green" onclick="runCmd('guardar')">Guardar Mundo</button>
+    <button id="btnStopServer" class="btn-red" onclick="stopServer()">Guardar y Apagar</button>
   </div>
 </div>
 
-<!-- LIVE METRIC STRIP -->
+<!-- METRIC STRIP -->
 <div class="status-strip">
   <div class="status-card">
-    <div class="status-card-label">Estado del Servidor</div>
-    <div id="cardServerStatus" class="status-card-value tag-green">🟢 ONLINE</div>
+    <div class="status-card-label">Estado Servidor</div>
+    <div id="cardServerStatus" class="status-card-value tag-green">ONLINE</div>
   </div>
   <div class="status-card">
-    <div class="status-card-label">Jugadores Conectados</div>
+    <div class="status-card-label">Jugadores</div>
     <div id="cardPlayerCount" class="status-card-value tag-blue">0 / 20</div>
   </div>
   <div class="status-card">
-    <div class="status-card-label">Auto-Ban al Romper Casa</div>
-    <div id="cardAutoBanStatus" class="status-card-value tag-green">🚨 ACTIVADO</div>
+    <div class="status-card-label">Auto-Ban Casa</div>
+    <div id="cardAutoBanStatus" class="status-card-value tag-green">ACTIVADO</div>
   </div>
   <div class="status-card">
-    <div class="status-card-label">Protección de Cofres y Hornos</div>
-    <div id="cardChestsStatus" class="status-card-value tag-green">🔒 BLOQUEADOS</div>
+    <div class="status-card-label">Protección Cofres</div>
+    <div id="cardChestsStatus" class="status-card-value tag-green">BLOQUEADOS</div>
   </div>
   <div class="status-card">
-    <div class="status-card-label">Anti-Explosiones (TNT/Creeper)</div>
-    <div id="cardExplosionStatus" class="status-card-value tag-green">🛡️ SEGURO</div>
+    <div class="status-card-label">Anti-Explosiones</div>
+    <div id="cardExplosionStatus" class="status-card-value tag-green">SEGURO</div>
   </div>
   <div class="status-card">
     <div class="status-card-label">PvP Global</div>
-    <div id="cardPvpStatus" class="status-card-value tag-amber">⚔️ ACTIVADO</div>
+    <div id="cardPvpStatus" class="status-card-value tag-amber">ACTIVADO</div>
   </div>
   <div class="status-card">
-    <div class="status-card-label">Auto-Apagado Inactivo</div>
-    <div id="cardIdleStatus" class="status-card-value tag-blue">⏱️ 10 MIN</div>
+    <div class="status-card-label">Auto-Apagado</div>
+    <div id="cardIdleStatus" class="status-card-value tag-blue">10 MIN</div>
     <div id="cardIdleSub" style="font-size:11px; color:var(--muted); margin-top:2px;">PC en reposo</div>
   </div>
 </div>
 
-<!-- MAIN GRID OF CARDS -->
-<div class="grid">
+<!-- MAIN GRID -->
+<div class="main-grid">
 
-  <!-- 1. PROTECCIÓN DE CASA Y AUTO-BAN -->
-  <div class="card">
-    <h2>🏠 Reglas de tu Casa y Auto-Ban</h2>
-    
-    <!-- Auto-Ban Toggle -->
+  <!-- 1. CHAT EN TIEMPO REAL -->
+  <div class="card col-6">
+    <div class="card-header">
+      <div class="card-title">Chat del Juego en Directo</div>
+      <span style="font-size:11px; color:var(--muted);">En vivo desde Minecraft</span>
+    </div>
+    <div id="chatFeed" class="chat-feed">
+      <div class="chat-system">Cargando mensajes del juego...</div>
+    </div>
+    <form onsubmit="sendChatMessage(event)" class="form-row" style="margin-top:2px;">
+      <input type="text" id="chatInput" placeholder="Escribe un mensaje para todos los jugadores..." style="flex:1;">
+      <button type="submit" class="btn-accent">Enviar</button>
+    </form>
+  </div>
+
+  <!-- 2. ESCUCHA DE VOZ EN DIRECTO (RADIO WEBRTC) -->
+  <div class="card col-6">
+    <div class="card-header">
+      <div class="card-title">Escucha de Voz en Directo (WebRTC)</div>
+      <div id="voiceRadioStatus" class="pill-state pill-off">DESCONECTADA</div>
+    </div>
+    <div style="font-size:12px; color:var(--muted);">
+      Escucha el chat de voz de tus amigos por tus auriculares o altavoces sin necesidad de abrir el juego en pantalla completa.
+    </div>
+    <div class="form-row" style="justify-content:space-between; background:#0d131f; padding:12px; border-radius:8px; border:1px solid var(--border);">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button id="btnToggleVoiceRadio" class="btn-green" onclick="toggleVoiceRadio()">Conectar Radio de Voz</button>
+        <button class="btn-sm" onclick="openRadioWindow()">Abrir en Ventana</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:12px; color:var(--muted);">Volumen:</span>
+        <input type="range" id="voiceRadioVolume" min="0" max="100" value="100" style="width:100px;" oninput="updateRadioVolume(this.value)">
+        <span id="voiceRadioVolumeLabel" style="font-size:11px; font-weight:700; width:30px;">100%</span>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:2px;">
+      <span style="font-size:12px; color:var(--muted);">Modo Proximidad (Nearby):</span>
+      <select id="voiceRadioPlayerSelect" style="flex:1;">
+        <option value="">Seleccionar jugador para acercar oyente...</option>
+      </select>
+      <button class="btn-sm" onclick="tpRadioToPlayer()">Teletransportar Oyente</button>
+    </div>
+    <div id="radioIframeContainer"></div>
+  </div>
+
+  <!-- 3. REGLAS DE LA CASA Y AUTO-BAN -->
+  <div class="card col-6">
+    <div class="card-header">
+      <div class="card-title">Reglas de tu Casa y Protección</div>
+      <span style="font-size:11px; color:var(--muted);">Seguridad activa</span>
+    </div>
+
     <div class="rule-box">
       <div>
-        <div class="rule-desc-title">🚨 Auto-Ban al Romper tu Casa</div>
-        <div class="rule-desc-sub">Si un amigo intenta romper un bloque de tu casa, el bloque NO se rompe y el servidor lo banea al instante.</div>
+        <div class="rule-desc-title">Auto-Ban al Romper en tu Casa</div>
+        <div class="rule-desc-sub">Banea automáticamente al jugador que rompa o queme bloques en tu propiedad.</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <span id="badgeAutoBan" class="pill-state pill-on">ACTIVO</span>
-        <button id="btnToggleAutoBan" class="btn-sm btn-dark btn-toggle-action" onclick="toggleRule('autoban')">Cambiar</button>
+        <button id="btnToggleAutoBan" class="btn-sm" onclick="toggleRule('autoban')">Cambiar</button>
       </div>
     </div>
 
-    <!-- Auto-Shutdown Inactivity Toggle -->
     <div class="rule-box">
       <div>
-        <div class="rule-desc-title">⏱️ Auto-Apagado por Inactividad (10 min)</div>
-        <div class="rule-desc-sub">Guarda todo y apaga el servidor automáticamente si no hay nadie conectado durante 10 minutos para liberar tu PC.</div>
+        <div class="rule-desc-title">Auto-Apagado por Inactividad</div>
+        <div class="rule-desc-sub">Apaga el servidor si nadie juega durante 10 minutos para ahorrar recursos.</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span id="badgeAutoShutdown" class="pill-state pill-on">10 MIN</span>
-        <button id="btnToggleAutoShutdown" class="btn-sm btn-dark btn-toggle-action" onclick="toggleAutoShutdown()">Cambiar</button>
+        <span id="badgeAutoShutdown" class="pill-state pill-on">10 MIN (ON)</span>
+        <button id="btnToggleAutoShutdown" class="btn-sm" onclick="toggleAutoShutdown()">Cambiar</button>
       </div>
     </div>
 
-    <!-- Cofres Toggle -->
     <div class="rule-box">
       <div>
-        <div class="rule-desc-title">🔒 Bloqueo de Cofres y Hornos</div>
-        <div class="rule-desc-sub">Impide que amigos abran o saquen objetos de tus cofres y del horno de abajo en tu casa (el horno de arriba queda libre para todos).</div>
+        <div class="rule-desc-title">Protección de Cofres y Hornos</div>
+        <div class="rule-desc-sub">Impide que extraños abran cofres, hornos o tolvas de tu casa.</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <span id="badgeChests" class="pill-state pill-on">BLOQUEADOS</span>
-        <button id="btnToggleChests" class="btn-sm btn-dark btn-toggle-action" onclick="toggleRule('cofres')">Cambiar</button>
+        <button id="btnToggleChests" class="btn-sm" onclick="toggleRule('cofres')">Cambiar</button>
       </div>
     </div>
 
-    <!-- Anti-Explosion Toggle -->
     <div class="rule-box">
       <div>
-        <div class="rule-desc-title">💥 Protección contra Explosiones</div>
-        <div class="rule-desc-sub">Evita que la dinamita (TNT) o los Creepers rompan bloques de construcciones.</div>
+        <div class="rule-desc-title">Anti-Explosiones (TNT y Creepers)</div>
+        <div class="rule-desc-sub">Anula el daño por explosión en bloques dentro del radio de tu casa.</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <span id="badgeExplosion" class="pill-state pill-on">SEGURO</span>
-        <button id="btnToggleExplosion" class="btn-sm btn-dark btn-toggle-action" onclick="toggleRule('explosion')">Cambiar</button>
+        <button id="btnToggleExplosion" class="btn-sm" onclick="toggleRule('explosiones')">Cambiar</button>
       </div>
     </div>
 
-    <!-- House Center and Radius -->
-    <div style="background:#0b1120; border:1px solid var(--border); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
-      <div style="font-weight:700; font-size:13px; color:#cbd5e1;">📍 Coordenadas de tu Casa Protegida</div>
-      <div id="houseCoords" style="font-size:12px; color:var(--muted); font-family:monospace;">Centro: X=-272, Y=73, Z=-5 (Radio: 12 bloques)</div>
-      <div style="display:flex; gap:8px; margin-top:4px;">
-        <button class="btn-sm btn-dark" onclick="runCmd('casa')">🚀 Ir a mi Casa</button>
-        <button class="btn-sm btn-green" onclick="setHouseHere()">📌 Fijar Casa donde esté Xavi ahora</button>
-      </div>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-        <span style="font-size:12px; color:var(--muted);">Radio de protección:</span>
-        <input id="inputRadius" type="number" value="12" style="width:70px; padding:4px 8px; font-size:12px;">
-        <button class="btn-sm btn-dark" onclick="runCmd('protegercasa ' + document.getElementById('inputRadius').value)">Guardar Radio</button>
-      </div>
-    </div>
-
-    <!-- Friends Whitelist -->
-    <div style="background:#0b1120; border:1px solid var(--border); border-radius:12px; padding:14px;">
-      <div style="font-weight:700; font-size:13px; color:#cbd5e1; margin-bottom:8px;">👥 Amigos con Permiso en tu Casa</div>
-      <div class="input-group" style="margin-bottom:10px;">
-        <input id="friendInput" placeholder="Nombre exacto del amigo (ej. Guille)..." style="flex:1;">
-        <button class="btn-sm btn-green" onclick="addFriend()">+ Dar Permiso</button>
-      </div>
-      <div id="friendsList" class="friends-chips">
-        <span style="color:var(--muted); font-size:12px;">Ningún amigo añadido (solo Xavi tiene acceso).</span>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- 2. JUGADORES, MODERACIÓN Y ADVERTENCIAS (/warn) -->
-  <div class="card">
-    <h2>🎮 Jugadores y Moderación Rápida</h2>
-
-    <!-- Quick Actions Form -->
-    <div style="background:#0b1120; border:1px solid var(--border); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;">
-      <div style="font-weight:700; font-size:13px; color:#cbd5e1;">⚡ Acción Rápida sobre Jugador</div>
-      <div class="input-group">
-        <input id="quickTarget" placeholder="Escribe el nombre del jugador..." list="knownPlayersList" style="flex:1;">
-        <datalist id="knownPlayersList"></datalist>
-      </div>
-      <input id="quickReason" placeholder="Motivo (opcional, ej. Matar sin permiso)...">
-      <div class="btn-row">
-        <button class="btn-amber btn-sm" onclick="quickWarn()">⚠️ Advertir (/warn)</button>
-        <button class="btn-dark btn-sm" onclick="quickUnwarn()">↩️ Quitar Warn (-1)</button>
-        <button class="btn-red btn-sm" onclick="quickBan()">🔨 Banear</button>
-        <button class="btn-green btn-sm" onclick="quickUnban()">✅ Desbanear</button>
-        <button class="btn-amber btn-sm" onclick="quickKick()">🚪 Expulsar (Kick)</button>
-        <button class="btn-dark btn-sm" onclick="quickFreeze()">❄️ Congelar / Descongelar</button>
-        <button class="btn-dark btn-sm" onclick="quickTpToMe()">📍 Traer hacia mí</button>
-      </div>
-    </div>
-
-    <!-- Active Warnings List -->
-    <div>
-      <div style="font-weight:700; font-size:13px; margin-bottom:6px; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center;">
-        <span>📋 Historial de Advertencias (/warn) — Ban a las 4</span>
-        <button class="btn-sm btn-dark" style="font-size:11px; padding:2px 8px;" onclick="runCmd('warns')">Actualizar</button>
-      </div>
-      <div id="warnedListContainer">
-        <div style="color:var(--muted); font-size:12px; background:#0b1120; border-radius:8px; padding:10px 14px; border:1px dashed var(--border);">No hay jugadores con advertencias activas (todos limpios 0/4).</div>
-      </div>
-    </div>
-
-    <!-- Online Players List -->
-    <div>
-      <div style="font-weight:700; font-size:13px; margin-bottom:8px; color:#cbd5e1;">🟢 Jugadores Conectados Ahora Mismo</div>
-      <div id="onlinePlayersContainer">
-        <div style="color:var(--muted); font-size:13px; text-align:center; padding:16px; background:#0b1120; border-radius:10px; border:1px dashed var(--border);">No hay ningún jugador conectado ahora mismo.</div>
-      </div>
-    </div>
-
-    <!-- Banned List -->
-    <div>
-      <div style="font-weight:700; font-size:13px; margin-bottom:6px; color:#cbd5e1;">🚫 Jugadores Baneados del Servidor</div>
-      <div id="bannedListContainer">
-        <div style="color:#34d399; font-size:12px; background:#0b1120; padding:10px 14px; border-radius:8px; border:1px solid var(--border);">✅ No hay ningún jugador baneado actualmente.</div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- 3. PODERES DE XAVI, MUNDO Y CLANES -->
-  <div class="card">
-    <h2>⚡ Poderes de Xavi y Control del Mundo</h2>
-
-    <!-- PvP Global Rule -->
     <div class="rule-box">
       <div>
-        <div class="rule-desc-title">⚔️ Combate PvP Global</div>
-        <div class="rule-desc-sub">Permite o desactiva que los jugadores puedan pegarse o hacerse daño entre ellos.</div>
+        <div class="rule-desc-title">Combate PvP Global</div>
+        <div class="rule-desc-sub">Permite o desactiva que los jugadores puedan pegarse o hacerse daño.</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <span id="badgePvp" class="pill-state pill-on">ACTIVADO</span>
-        <button id="btnTogglePvp" class="btn-sm btn-dark btn-toggle-action" onclick="toggleRule('pvp')">Cambiar</button>
+        <button id="btnTogglePvp" class="btn-sm" onclick="toggleRule('pvp')">Cambiar</button>
       </div>
     </div>
 
-    <!-- Admin Cheats for Xavi -->
-    <div style="font-weight:700; font-size:13px; color:#cbd5e1;">👑 Poderes Exclusivos para Xavi:</div>
-    <div class="btn-row">
-      <button class="btn-green" onclick="runCmd('god Xavi')">🛡️ Modo Inmortal (God)</button>
-      <button onclick="runCmd('fly Xavi')">🕊️ Modo Vuelo (Fly)</button>
-      <button class="btn-green" onclick="runCmd('curar Xavi')">❤️ Curar Vida y Comida 100%</button>
-      <button class="btn-amber" onclick="runCmd('recuperarinventario')">🎒 Restaurar Inventario del EPK</button>
+    <!-- ZONA CASA Y AMIGOS -->
+    <div style="border-top:1px solid var(--border); padding-top:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:13px; font-weight:700;">Coordenadas y Radio de Protección</span>
+        <button class="btn-sm" onclick="setHouseHere()">Fijar Aquí</button>
+      </div>
+      <div id="houseCoords" style="font-size:12px; color:var(--muted); font-family:monospace; margin-bottom:8px;">Centro: X=-276, Y=67, Z=-10 (Radio: 32)</div>
+      <div class="form-row">
+        <span style="font-size:12px; color:var(--muted);">Radio (bloques):</span>
+        <input type="number" id="inputRadius" value="32" min="5" max="256" style="width:70px;">
+        <button class="btn-sm" onclick="runCmd('setcasa ' + document.getElementById('inputRadius').value)">Actualizar Radio</button>
+      </div>
     </div>
 
-    <!-- GameMode for Xavi -->
-    <div style="font-weight:700; font-size:13px; color:#cbd5e1; margin-top:4px;">🎮 Cambiar Modo de Juego de Xavi:</div>
-    <div class="btn-row">
-      <button class="btn-dark" onclick="runCmd('gamemode 0 Xavi')">🌲 Supervivencia</button>
-      <button class="btn-amber" onclick="runCmd('gamemode 1 Xavi')">🧱 Creativo</button>
-      <button class="btn-dark" onclick="runCmd('gamemode 3 Xavi')">👻 Espectador</button>
-    </div>
-
-    <!-- World Environment -->
-    <div style="font-weight:700; font-size:13px; color:#cbd5e1; margin-top:4px;">☀️ Clima y Tiempo:</div>
-    <div class="btn-row">
-      <button class="btn-dark" onclick="runCmd('time set day'); runCmd('weather clear')">☀️ Hacer de Día y Soleado</button>
-      <button class="btn-dark" onclick="runCmd('time set night')">🌙 Hacer de Noche</button>
-    </div>
-
-    <!-- Backups -->
-    <div style="font-weight:700; font-size:13px; color:#cbd5e1; margin-top:4px;">💾 Copias de Seguridad del Mundo:</div>
-    <div class="btn-row">
-      <button class="btn-green" onclick="runCmd('guardar')">💾 Guardar Mundo en Disco</button>
-      <button class="btn-dark" onclick="createBackup()">📦 Crear Copia de Seguridad</button>
-      <button class="btn-red" onclick="restoreOriginalWorld()">⚠️ Restaurar Mundo Original (EPK)</button>
-    </div>
-
-  </div>
-
-  <!-- 4. ALIANZAS Y CLANES -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
-      <h2 style="margin:0; border:none; padding:0;">🛡️ Clanes y Alianzas en Vivo</h2>
-      <button class="btn-sm btn-dark" onclick="runCmd('alianza lista')">📋 /alianza lista</button>
-    </div>
-    <div id="alliancesContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
-      <div style="color:var(--muted); font-size:13px; text-align:center; padding:16px;">Cargando alianzas...</div>
+    <div style="border-top:1px solid var(--border); padding-top:10px;">
+      <div style="font-size:13px; font-weight:700; margin-bottom:6px;">Amigos de Confianza (Permiso de construcción)</div>
+      <div id="friendsList" class="friends-chips">
+        <span style="color:var(--muted); font-size:12px;">Cargando amigos...</span>
+      </div>
+      <div class="form-row" style="margin-top:8px;">
+        <input type="text" id="inputFriendName" placeholder="Nombre exacto del amigo..." list="knownPlayersList" style="flex:1;">
+        <button class="btn-sm btn-green" onclick="addFriend()">+ Añadir Amigo</button>
+      </div>
     </div>
   </div>
 
-  <!-- 5. SISTEMA DE HONOR ESTILO RDR2 -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
-      <h2 style="margin:0; border:none; padding:0;">🤠 Sistema de Honor (Estilo RDR2)</h2>
-      <button class="btn-sm btn-dark" onclick="runCmd('honor Xavi')">🤠 Mi Honor</button>
+  <!-- 4. JUGADORES Y MODERACIÓN -->
+  <div class="card col-6">
+    <div class="card-header">
+      <div class="card-title">Jugadores Conectados y Moderación</div>
+      <span style="font-size:11px; color:var(--muted);">Acciones en 1 clic</span>
     </div>
-    <div id="honorListContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
-      <div style="color:var(--muted); font-size:13px; text-align:center; padding:16px;">Cargando niveles de honor...</div>
+
+    <!-- ACCIÓN RÁPIDA -->
+    <div class="form-row" style="background:#0d131f; padding:10px; border-radius:8px; border:1px solid var(--border);">
+      <select id="quickPlayerSelect" style="flex:1;">
+        <option value="">Selecciona jugador...</option>
+      </select>
+      <input type="text" id="actionReason" placeholder="Motivo (opcional)..." style="flex:1.2;">
+      <button class="btn-sm btn-amber" onclick="quickWarn()">Warn</button>
+      <button class="btn-sm btn-amber" onclick="quickKick()">Kick</button>
+      <button class="btn-sm btn-red" onclick="quickBan()">Ban</button>
     </div>
-    <div style="background:#0b1120; border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:11px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-      <div><span style="color:#10b981; font-weight:700;">▲ Subir Honor:</span> Donar diamantes (/honor donar), derrotar enemigos (+15), cazar monstruos</div>
-      <div><span style="color:#ef4444; font-weight:700;">▼ Bajar Honor:</span> Matar inocentes (-25), grifear (-50), recibir advertencia /warn (-20)</div>
+
+    <!-- LISTA JUGADORES CONECTADOS -->
+    <div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:6px;">Jugadores en Línea Ahora</div>
+      <div id="onlinePlayersContainer">
+        <div style="color:var(--muted); font-size:12px; text-align:center; padding:14px; background:#0d131f; border-radius:8px; border:1px dashed var(--border);">No hay jugadores conectados.</div>
+      </div>
+    </div>
+
+    <!-- ADVERTENCIAS ACTIVAS -->
+    <div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:6px;">Historial de Advertencias (/warn)</div>
+      <div id="warnedListContainer">
+        <div style="color:var(--muted); font-size:12px; background:#0d131f; border-radius:8px; padding:10px; border:1px dashed var(--border);">No hay advertencias activas.</div>
+      </div>
+    </div>
+
+    <!-- JUGADORES BANEADOS -->
+    <div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:6px;">Jugadores Baneados</div>
+      <div id="bannedListContainer">
+        <div style="color:#34d399; font-size:12px; background:#0d131f; padding:10px; border-radius:8px; border:1px solid var(--border);">No hay ningún jugador baneado.</div>
+      </div>
     </div>
   </div>
 
-  <!-- 6. CONSOLA EN VIVO -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
-      <h2 style="margin:0; border:none; padding:0;">💻 Consola del Servidor en Vivo</h2>
-      <button class="btn-sm btn-dark" onclick="clearConsole()">🧹 Limpiar</button>
+  <!-- 5. CLANES Y ALIANZAS -->
+  <div class="card col-6">
+    <div class="card-header">
+      <div class="card-title">Clanes y Alianzas en Vivo</div>
+      <button class="btn-sm" onclick="runCmd('alianza lista')">Actualizar</button>
+    </div>
+    <div id="alliancesContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+      <div style="color:var(--muted); font-size:12px; text-align:center; padding:14px;">Cargando alianzas...</div>
+    </div>
+  </div>
+
+  <!-- 6. SISTEMA DE HONOR -->
+  <div class="card col-6">
+    <div class="card-header">
+      <div class="card-title">Sistema de Honor (RDR2)</div>
+      <button class="btn-sm" onclick="runCmd('honor Xavi')">Mi Honor</button>
+    </div>
+    <div id="honorListContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+      <div style="color:var(--muted); font-size:12px; text-align:center; padding:14px;">Cargando honor...</div>
+    </div>
+    <div style="background:#0d131f; border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+      <div><span style="color:#10b981; font-weight:700;">Subir Honor:</span> Donar diamantes (/honor donar), cazar monstruos</div>
+      <div><span style="color:#ef4444; font-weight:700;">Bajar Honor:</span> Atacar inocentes (-25), grifear (-50), recibir warn (-20)</div>
+    </div>
+  </div>
+
+  <!-- 7. CONSOLA DE COMANDOS Y BACKUPS -->
+  <div class="card col-12">
+    <div class="card-header">
+      <div class="card-title">Consola del Servidor y Copias de Seguridad</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-sm btn-green" onclick="createBackup()">Crear Copia de Seguridad</button>
+        <button class="btn-sm btn-red" onclick="restoreOriginalWorld()">Restaurar Mundo Original</button>
+        <button class="btn-sm" onclick="clearConsole()">Limpiar Registro</button>
+      </div>
     </div>
     <div id="logBox" class="log-box">Conectando a los registros del servidor...</div>
-    <div class="input-group">
-      <input id="customCmd" placeholder="Escribe cualquier comando (ej. tp Jeffepstein Xavi, give Xavi diamond 64)..." onkeydown="if(event.key==='Enter') sendCustomCmd()">
-      <button onclick="sendCustomCmd()">▶ Ejecutar</button>
-    </div>
-    <div id="cmdOutput" style="font-size:13px; color:#34d399; min-height:18px; font-weight:600;"></div>
-    
-    <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px; color:var(--muted); align-items:center;">
-      <span>Comandos rápidos:</span>
-      <button class="btn-sm btn-dark" style="padding:4px 8px; font-size:11px;" onclick="runCmd('list')">/list</button>
-      <button class="btn-sm btn-dark" style="padding:4px 8px; font-size:11px;" onclick="runCmd('infocasa')">/infocasa</button>
-      <button class="btn-sm btn-dark" style="padding:4px 8px; font-size:11px;" onclick="runCmd('baneados')">/baneados</button>
-      <button class="btn-sm btn-dark" style="padding:4px 8px; font-size:11px;" onclick="runCmd('warns')">/warns</button>
-      <button class="btn-sm btn-dark" style="padding:4px 8px; font-size:11px;" onclick="runCmd('recuperarinventario')">/recuperarinventario</button>
+    <div class="form-row" style="margin-top:4px;">
+      <input type="text" id="customCmdInput" placeholder="Introduce un comando (ej: say Hola, time set day, op Xavi)..." style="flex:1;" onkeydown="if(event.key==='Enter') sendCustomCmd()">
+      <button class="btn-accent" onclick="sendCustomCmd()">Ejecutar Comando</button>
     </div>
   </div>
 
 </div>
 
-<div id="toast" class="toast"></div>
+<!-- DATALIST FOR AUTOCOMPLETION -->
+<datalist id="knownPlayersList"></datalist>
+
+<!-- TOAST -->
+<div id="toastNotification" class="toast">Notificación</div>
 
 <script>
 let currentRules = {};
+let radioActive = false;
+let radioIframe = null;
 
 function showToast(msg, isError) {
-  const t = document.getElementById('toast');
+  const t = document.getElementById('toastNotification');
   if (!t) return;
   t.textContent = msg;
-  t.style.borderLeftColor = isError ? '#f43f5e' : '#10b981';
+  t.style.borderLeftColor = isError ? '#ef4444' : '#10b981';
   t.style.display = 'block';
-  setTimeout(function() { t.style.display = 'none'; }, 3800);
+  setTimeout(() => { t.style.display = 'none'; }, 3500);
 }
 
 function copyText(txt) {
   if (!txt) return;
-  navigator.clipboard.writeText(txt).then(function() {
-    showToast('¡Copiado al portapapeles: ' + txt + '!');
-  }).catch(function() {
-    showToast(txt);
+  navigator.clipboard.writeText(txt).then(() => {
+    showToast('Copiado al portapapeles: ' + txt, false);
+  }).catch(() => {
+    showToast('Error al copiar texto', true);
   });
 }
 
@@ -505,204 +697,211 @@ async function runCmd(cmd) {
     const res = await fetch('/api/cmd', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cmd: cmd })
+      body: JSON.stringify({ cmd })
     });
     const data = await res.json();
-    const out = data.output || ('Comando ejecutado: ' + cmd);
-    const outEl = document.getElementById('cmdOutput');
-    if (outEl) outEl.textContent = '➜ ' + out;
-    showToast(out);
-    refreshState();
-  } catch (e) {
-    showToast('Error al conectar con el servidor', true);
+    if (data.ok) {
+      showToast('Comando ejecutado: ' + cmd, false);
+    } else {
+      showToast('Fallo al ejecutar: ' + (data.output || 'Error'), true);
+    }
+  } catch (err) {
+    showToast('Error de conexión con la consola', true);
   }
 }
 
 function sendCustomCmd() {
-  const el = document.getElementById('customCmd');
-  if (!el || !el.value.trim()) return;
-  runCmd(el.value.trim());
-  el.value = '';
+  const inp = document.getElementById('customCmdInput');
+  if (!inp || !inp.value.trim()) return;
+  runCmd(inp.value.trim());
+  inp.value = '';
 }
 
 function clearConsole() {
-  const el = document.getElementById('logBox');
-  if (el) el.textContent = '';
+  const logBox = document.getElementById('logBox');
+  if (logBox) logBox.textContent = '';
 }
 
 async function toggleRule(ruleType) {
-  let targetCmd = '';
+  let cmd = '';
   if (ruleType === 'autoban') {
-    targetCmd = currentRules.autoBan ? 'autobancasa off' : 'autobancasa on';
+    cmd = currentRules.autoBan ? 'autoban off' : 'autoban on';
   } else if (ruleType === 'cofres') {
-    targetCmd = currentRules.protectChests ? 'cofrescasa off' : 'cofrescasa on';
-  } else if (ruleType === 'explosion') {
-    targetCmd = currentRules.antiExplosion ? 'regla explosion on' : 'regla explosion off';
+    cmd = currentRules.protectChests ? 'bloquearcofres off' : 'bloquearcofres on';
+  } else if (ruleType === 'explosiones') {
+    cmd = currentRules.antiExplosion ? 'antiexplosiones off' : 'antiexplosiones on';
   } else if (ruleType === 'pvp') {
-    targetCmd = 'pvp';
+    cmd = 'pvp toggle';
   }
-  if (targetCmd) {
-    await runCmd(targetCmd);
-  }
+  if (cmd) await runCmd(cmd);
 }
 
-function setHouseHere() {
-  const rInput = document.getElementById('inputRadius');
-  const r = (rInput && rInput.value) ? rInput.value : '12';
-  runCmd('protegercasa ' + r);
-}
-
+function setHouseHere() { runCmd('setcasaaqui'); }
 function addFriend() {
-  const fInput = document.getElementById('friendInput');
-  const f = fInput ? fInput.value.trim() : '';
-  if (!f) return alert('Escribe el nombre de tu amigo');
-  runCmd('amigos add ' + f);
-  if (fInput) fInput.value = '';
+  const inp = document.getElementById('inputFriendName');
+  if (!inp || !inp.value.trim()) return;
+  runCmd('amigo add ' + inp.value.trim());
+  inp.value = '';
 }
-
 function removeFriend(f) {
-  if (!f) return;
-  runCmd('amigos remove ' + f);
+  if (f) runCmd('amigo remove ' + f);
 }
 
 function quickWarn() {
-  const pEl = document.getElementById('quickTarget');
-  const rEl = document.getElementById('quickReason');
-  const p = pEl ? pEl.value.trim() : '';
-  const r = (rEl && rEl.value.trim()) ? rEl.value.trim() : 'Comportamiento inadecuado con otros jugadores';
-  if (!p) return alert('Escribe o selecciona el nombre del jugador');
-  runCmd('warn ' + p + ' ' + r);
+  const p = document.getElementById('quickPlayerSelect').value;
+  const r = document.getElementById('actionReason').value || 'Comportamiento indebido';
+  if (p) runCmd('warn ' + p + ' ' + r);
 }
-
 function quickWarnUser(name) {
-  if (!name) return;
-  const reason = prompt('Motivo de la advertencia para ' + name + ' (a las 4 advertencias se auto-banea):', 'Comportamiento inadecuado con otros jugadores');
-  if (reason !== null && reason.trim()) {
-    runCmd('warn ' + name + ' ' + reason.trim());
-  }
+  const r = prompt('Motivo de la advertencia para ' + name + ':', 'Incumplir normas');
+  if (r) runCmd('warn ' + name + ' ' + r);
 }
-
 function quickUnwarn(name) {
-  const pEl = document.getElementById('quickTarget');
-  const p = name || (pEl ? pEl.value.trim() : '');
-  if (!p) return alert('Escribe o selecciona el nombre del jugador');
-  runCmd('unwarn ' + p);
+  if (name) runCmd('unwarn ' + name);
 }
-
 function quickClearWarns(name) {
-  if (!name) return;
-  if (!confirm('¿Seguro que deseas borrar todas las advertencias de ' + name + '?')) return;
-  runCmd('clearwarns ' + name);
+  if (name) runCmd('clearwarns ' + name);
 }
-
 function quickBan() {
-  const pEl = document.getElementById('quickTarget');
-  const rEl = document.getElementById('quickReason');
-  const p = pEl ? pEl.value.trim() : '';
-  const r = (rEl && rEl.value.trim()) ? rEl.value.trim() : 'Baneado desde la consola de Xavi';
-  if (!p) return alert('Escribe el nombre del jugador');
-  if (!confirm('¿Seguro que quieres banear a ' + p + '?')) return;
-  runCmd('ban ' + p + ' ' + r);
+  const p = document.getElementById('quickPlayerSelect').value;
+  const r = document.getElementById('actionReason').value || 'Expulsado por administrador';
+  if (p) runCmd('ban ' + p + ' ' + r);
 }
-
 function quickBanUser(p) {
-  if (!p) return;
-  if (confirm('¿Seguro que quieres banear a ' + p + '?')) {
-    runCmd('ban ' + p + ' Baneado desde la consola');
-  }
+  const r = prompt('Motivo del ban para ' + p + ':', 'Expulsado por administrador');
+  if (r) runCmd('ban ' + p + ' ' + r);
 }
-
 function quickUnban(name) {
-  const pEl = document.getElementById('quickTarget');
-  const p = name || (pEl ? pEl.value.trim() : '');
-  if (!p) return alert('Escribe el nombre del jugador');
-  runCmd('unban ' + p);
+  if (name) runCmd('pardon ' + name);
 }
-
 function quickKick() {
-  const pEl = document.getElementById('quickTarget');
-  const rEl = document.getElementById('quickReason');
-  const p = pEl ? pEl.value.trim() : '';
-  const r = (rEl && rEl.value.trim()) ? rEl.value.trim() : 'Expulsado por Xavi';
-  if (!p) return alert('Escribe el nombre del jugador');
-  runCmd('expulsar ' + p + ' ' + r);
-}
-
-function quickFreeze() {
-  const pEl = document.getElementById('quickTarget');
-  const p = pEl ? pEl.value.trim() : '';
-  if (!p) return alert('Escribe el nombre del jugador');
-  runCmd('congelar ' + p);
-}
-
-function quickTpToMe() {
-  const pEl = document.getElementById('quickTarget');
-  const p = pEl ? pEl.value.trim() : '';
-  if (!p) return alert('Escribe el nombre del jugador');
-  runCmd('tp ' + p + ' Xavi');
+  const p = document.getElementById('quickPlayerSelect').value;
+  const r = document.getElementById('actionReason').value || 'Expulsado por el moderador';
+  if (p) runCmd('kick ' + p + ' ' + r);
 }
 
 async function switchMode(m) {
-  showToast('Cambiando a ' + (m === 'casa' ? 'Modo Casa (Cloudflare)' : (m === 'colegio' ? 'Modo Colegio (Hotspot)' : 'Modo Ngrok')) + '...');
   try {
     const res = await fetch('/api/switch-mode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ modo: m })
     });
-    const d = await res.json();
-    if (d.ok) {
-      showToast('Modo cambiado con éxito.');
+    const data = await res.json();
+    if (data.ok) {
+      showToast('Modo de conexión cambiado a: ' + m.toUpperCase(), false);
       refreshState();
     }
-  } catch (e) {
+  } catch (err) {
     showToast('Error al cambiar de modo', true);
   }
 }
 
 async function toggleAutoShutdown() {
   await fetch('/api/toggle-autoshutdown', { method: 'POST' });
-  showToast('Cambiando Auto-Apagado por inactividad...');
   refreshState();
 }
 
 async function startServer() {
-  showToast('Iniciando servidor de Minecraft y Proxy...');
+  showToast('Iniciando servidor de Minecraft y Proxy...', false);
   await fetch('/api/start', { method: 'POST' });
-  setTimeout(refreshState, 3500);
+  setTimeout(refreshState, 3000);
 }
 
 async function stopServer() {
-  if (!confirm('¿Seguro que deseas guardar el mundo y apagar todo el servidor?')) return;
-  showToast('Guardando mundo e inventarios limpiamente...');
-  try {
-    await fetch('/api/stop', { method: 'POST' });
-  } catch (ignored) {}
-  setTimeout(function() {
-    document.body.innerHTML = '<div style="display:flex;height:100vh;justify-content:center;align-items:center;flex-direction:column;font-family:sans-serif;color:#f1f5f9;background:#090d16;text-align:center;padding:20px;">'
-      + '<div style="font-size:48px;margin-bottom:16px;">🛑</div>'
-      + '<h2 style="font-size:24px;margin-bottom:8px;">Servidor y Consola Apagados</h2>'
-      + '<p style="color:#94a3b8;max-width:480px;line-height:1.6;">El mundo e inventarios se han guardado con éxito en el disco. Todos los puertos y servicios se han liberado por completo. Ya puedes cerrar esta ventana.</p>'
-      + '</div>';
-  }, 1000);
+  if (!confirm('¿Deseas guardar todo el progreso y apagar el servidor de forma segura?')) return;
+  showToast('Guardando mundo y apagando...', false);
+  await fetch('/api/stop', { method: 'POST' });
+  setTimeout(refreshState, 2000);
 }
 
 async function createBackup() {
-  showToast('Creando copia de seguridad...');
-  await runCmd('guardar');
+  showToast('Creando copia de seguridad del mundo...', false);
   const res = await fetch('/api/backup', { method: 'POST' });
   const data = await res.json();
-  showToast(data.message || 'Copia de seguridad creada con éxito.');
+  showToast(data.message || 'Copia de seguridad creada', !data.ok);
 }
 
 async function restoreOriginalWorld() {
-  if (!confirm('ATENCIÓN: Esto restaurará el mundo exactamente a como estaba en tu archivo E:\\Eaglercraft\\New World (8).epk. ¿Deseas continuar?')) return;
-  showToast('Restaurando mundo original...');
+  if (!confirm('ATENCIÓN: ¿Restaurar el mundo original (EPK)? Esto sustituirá el mundo actual por la versión base.')) return;
   const res = await fetch('/api/restore', { method: 'POST' });
   const data = await res.json();
-  showToast(data.message || 'Mundo restaurado con éxito.');
+  showToast(data.message || 'Restauración completada', !data.ok);
+  refreshState();
 }
 
+/* CHAT BIDIRECCIONAL */
+async function sendChatMessage(e) {
+  if (e) e.preventDefault();
+  const inp = document.getElementById('chatInput');
+  if (!inp || !inp.value.trim()) return;
+  const msg = inp.value.trim();
+  inp.value = '';
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await res.json();
+    if (!data.ok) showToast('Error al enviar mensaje: ' + (data.error || ''), true);
+    setTimeout(refreshState, 500);
+  } catch (err) {
+    showToast('Error de red al enviar mensaje', true);
+  }
+}
+
+/* RADIO WEBRTC */
+function toggleVoiceRadio() {
+  const container = document.getElementById('radioIframeContainer');
+  const btn = document.getElementById('btnToggleVoiceRadio');
+  const statusBadge = document.getElementById('voiceRadioStatus');
+  
+  if (!radioActive) {
+    radioActive = true;
+    btn.textContent = 'Desconectar Radio';
+    btn.className = 'btn-red';
+    statusBadge.textContent = 'TRANSMITIENDO EN VIVO';
+    statusBadge.className = 'pill-state pill-on';
+    
+    // Crear iframe que carga el cliente de Eaglercraft con audio
+    container.innerHTML = '<iframe id="radioIframe" src="/client" allow="autoplay; microphone" style="width:10px; height:10px; opacity:0; pointer-events:none;"></iframe>';
+    showToast('Radio de Voz conectada. Escuchando audio...', false);
+  } else {
+    radioActive = false;
+    btn.textContent = 'Conectar Radio de Voz';
+    btn.className = 'btn-green';
+    statusBadge.textContent = 'DESCONECTADA';
+    statusBadge.className = 'pill-state pill-off';
+    container.innerHTML = '';
+    showToast('Radio de Voz desconectada.', false);
+  }
+}
+
+function openRadioWindow() {
+  window.open('/client', 'EaglercraftVoiceRadio', 'width=500,height=380,menubar=no,toolbar=no,location=no');
+}
+
+function updateRadioVolume(val) {
+  const lbl = document.getElementById('voiceRadioVolumeLabel');
+  if (lbl) lbl.textContent = val + '%';
+  const iframe = document.getElementById('radioIframe');
+  if (iframe && iframe.contentWindow) {
+    try {
+      const audios = iframe.contentWindow.document.querySelectorAll('audio, video');
+      audios.forEach(a => a.volume = val / 100);
+    } catch (e) {}
+  }
+}
+
+function tpRadioToPlayer() {
+  const sel = document.getElementById('voiceRadioPlayerSelect');
+  if (!sel || !sel.value) return;
+  runCmd('tp RadioAdmin ' + sel.value);
+  showToast('Oyente acercado a ' + sel.value, false);
+}
+
+/* REFRESH STATE */
 async function refreshState() {
   try {
     const res = await fetch('/api/state?_t=' + Date.now());
@@ -723,25 +922,25 @@ async function refreshState() {
           const mins = Math.floor(left / 60);
           const secs = left % 60;
           if (cIdle) {
-            cIdle.textContent = '⏱️ ' + mins + ':' + (secs < 10 ? '0' : '') + secs;
+            cIdle.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
             cIdle.className = 'status-card-value tag-amber';
           }
           if (cIdleSub) cIdleSub.textContent = 'Apagando por inactividad...';
         } else {
           if (cIdle) {
-            cIdle.textContent = '⏱️ ACTIVO (10m)';
+            cIdle.textContent = 'ACTIVO (10m)';
             cIdle.className = 'status-card-value tag-green';
           }
-          if (cIdleSub) cIdleSub.textContent = 'Pausado (hay jugadores)';
+          if (cIdleSub) cIdleSub.textContent = 'Pausado (jugadores activos)';
         }
       } else {
-        if (cIdle) { cIdle.textContent = '💤 APAGADO'; cIdle.className = 'status-card-value tag-muted'; }
+        if (cIdle) { cIdle.textContent = 'APAGADO'; cIdle.className = 'status-card-value tag-muted'; }
         if (cIdleSub) cIdleSub.textContent = 'PC en reposo';
       }
     } else {
       if (bShutdown) { bShutdown.textContent = 'DESACTIVADO'; bShutdown.className = 'pill-state pill-off'; }
       if (btnShutdown) btnShutdown.textContent = 'Activar';
-      if (cIdle) { cIdle.textContent = '⛔ OFF'; cIdle.className = 'status-card-value tag-red'; }
+      if (cIdle) { cIdle.textContent = 'OFF'; cIdle.className = 'status-card-value tag-red'; }
       if (cIdleSub) cIdleSub.textContent = 'Sin auto-apagado';
     }
 
@@ -752,7 +951,6 @@ async function refreshState() {
     const btnStop = document.getElementById('btnStopServer');
     const btnSave = document.getElementById('btnSaveWorld');
 
-    // Highlight active mode buttons
     const bCasa = document.getElementById('btnModeCasa');
     const bCol = document.getElementById('btnModeColegio');
     const bNgr = document.getElementById('btnModeNgrok');
@@ -774,49 +972,48 @@ async function refreshState() {
     const friendsBox = document.getElementById('friendsConnectionBox');
     
     if (data.modo === 'casa') {
-      if (bMode) { bMode.textContent = '🏠 Modo Casa (Cloudflare)'; bMode.style.color = '#10b981'; }
+      if (bMode) { bMode.textContent = 'Modo Casa (Cloudflare)'; bMode.style.color = '#10b981'; }
       if (friendsBox) {
         if (data.tunnelUrl && data.tunnelUrl.ws) {
-          friendsBox.innerHTML = '⭐ <span style="color:#34d399;font-weight:700;">Túnel Cloudflare (Salta VPN):</span> <span class="ip-chip" data-copy="' + data.tunnelUrl.ws + '" onclick="copyText(this.dataset.copy)" title="Clic para copiar el túnel directo">' + data.tunnelUrl.ws + ' 📋</span>'
-            + ' <span style="margin:0 4px">•</span> <span style="color:var(--muted);">Web:</span> <span class="ip-chip" data-copy="' + data.tunnelUrl.web + '" onclick="copyText(this.dataset.copy)" title="Clic para copiar">' + data.tunnelUrl.web + ' 📋</span>'
-            + ' <span style="margin:0 4px">•</span> <span style="color:#38bdf8;font-weight:700;">Auto-Conector:</span> <span class="ip-chip" data-copy="wss://xavi" onclick="copyText(this.dataset.copy)" title="Dirección fija en el cliente Eaglercraft modificado">wss://xavi ✅</span>';
+          friendsBox.innerHTML = 'Amigos (Cloudflare): <span class="ip-chip" data-copy="' + data.tunnelUrl.ws + '" onclick="copyText(this.dataset.copy)" title="Clic para copiar túnel">' + data.tunnelUrl.ws + ' 📋</span>'
+            + ' <span style="margin:0 4px">•</span> <span class="ip-chip" data-copy="wss://xavi" onclick="copyText(this.dataset.copy)" title="Dirección fija">wss://xavi 📋</span>';
         } else if (data.online && data.tunnelStatus === 'conectando') {
-          friendsBox.innerHTML = 'Para amigos: <span class="ip-chip" style="color:#fbbf24;">⏳ Conectando túnel Cloudflare... (~10s)</span>';
+          friendsBox.innerHTML = 'Amigos: <span class="ip-chip" style="color:#fbbf24;">Conectando túnel Cloudflare...</span>';
         } else if (data.online) {
-          friendsBox.innerHTML = 'Para amigos: <span class="ip-chip" style="color:#fb7185;">⚠️ Túnel inactivo</span>';
+          friendsBox.innerHTML = 'Amigos: <span class="ip-chip" style="color:#fb7185;">Túnel inactivo</span>';
         } else {
-          friendsBox.innerHTML = 'Para amigos: <span class="ip-chip" style="color:#64748b;">🔴 Servidor apagado (inícialo para activar)</span>';
+          friendsBox.innerHTML = 'Amigos: <span class="ip-chip" style="color:#64748b;">Servidor apagado</span>';
         }
       }
     } else if (data.modo === 'ngrok') {
-      if (bMode) { bMode.textContent = '🌐 Modo Casa (Ngrok)'; bMode.style.color = '#38bdf8'; }
+      if (bMode) { bMode.textContent = 'Modo Casa (Ngrok)'; bMode.style.color = '#38bdf8'; }
       if (friendsBox) {
         if (data.tunnelUrl && data.tunnelUrl.ws) {
-          friendsBox.innerHTML = 'Para amigos (Ngrok): <span class="ip-chip" data-copy="' + data.tunnelUrl.ws + '" onclick="copyText(this.dataset.copy)">' + data.tunnelUrl.ws + ' 📋</span>';
+          friendsBox.innerHTML = 'Amigos (Ngrok): <span class="ip-chip" data-copy="' + data.tunnelUrl.ws + '" onclick="copyText(this.dataset.copy)">' + data.tunnelUrl.ws + ' 📋</span>';
         } else if (data.online && data.tunnelStatus === 'conectando') {
-          friendsBox.innerHTML = 'Para amigos: <span class="ip-chip" style="color:#fbbf24;">⏳ Conectando Ngrok...</span>';
+          friendsBox.innerHTML = 'Amigos: <span class="ip-chip" style="color:#fbbf24;">Conectando Ngrok...</span>';
         } else if (data.online) {
-          friendsBox.innerHTML = 'Para amigos: <span class="ip-chip" style="color:#fb7185;">⚠️ Ngrok inactivo</span>';
+          friendsBox.innerHTML = 'Amigos: <span class="ip-chip" style="color:#fb7185;">Ngrok inactivo</span>';
         } else {
-          friendsBox.innerHTML = 'Para amigos: <span class="ip-chip" style="color:#64748b;">🔴 Servidor apagado</span>';
+          friendsBox.innerHTML = 'Amigos: <span class="ip-chip" style="color:#64748b;">Servidor apagado</span>';
         }
       }
     } else {
-      if (bMode) { bMode.textContent = '🏫 Modo Colegio (Hotspot)'; bMode.style.color = '#f59e0b'; }
+      if (bMode) { bMode.textContent = 'Modo Colegio (Hotspot)'; bMode.style.color = '#f59e0b'; }
       if (friendsBox) {
-        friendsBox.innerHTML = 'Para amigos (Hotspot): <span class="ip-chip" data-copy="ws://192.168.137.1:8081" onclick="copyText(this.dataset.copy)">ws://192.168.137.1:8081 📋</span>';
+        friendsBox.innerHTML = 'Amigos (Hotspot): <span class="ip-chip" data-copy="ws://192.168.137.1:8081" onclick="copyText(this.dataset.copy)">ws://192.168.137.1:8081 📋</span>';
       }
     }
 
     if (data.online) {
-      if (badge) { badge.innerHTML = '<div class="pulse-dot"></div> 🟢 SERVIDOR ONLINE'; badge.className = 'status-badge online'; }
-      if (cardStatus) { cardStatus.innerHTML = '🟢 ONLINE'; cardStatus.className = 'status-card-value tag-green'; }
+      if (badge) { badge.innerHTML = '<div class="pulse-dot"></div> SERVIDOR ONLINE'; badge.className = 'status-badge online'; }
+      if (cardStatus) { cardStatus.innerHTML = 'ONLINE'; cardStatus.className = 'status-card-value tag-green'; }
       if (btnStart) btnStart.style.display = 'none';
       if (btnStop) btnStop.style.display = 'inline-flex';
       if (btnSave) btnSave.style.display = 'inline-flex';
     } else {
-      if (badge) { badge.innerHTML = '<div class="pulse-dot"></div> 🔴 SERVIDOR APAGADO'; badge.className = 'status-badge offline'; }
-      if (cardStatus) { cardStatus.innerHTML = '🔴 APAGADO'; cardStatus.className = 'status-card-value tag-red'; }
+      if (badge) { badge.innerHTML = '<div class="pulse-dot"></div> SERVIDOR APAGADO'; badge.className = 'status-badge offline'; }
+      if (cardStatus) { cardStatus.innerHTML = 'APAGADO'; cardStatus.className = 'status-card-value tag-red'; }
       if (btnStart) btnStart.style.display = 'inline-flex';
       if (btnStop) btnStop.style.display = 'none';
       if (btnSave) btnSave.style.display = 'none';
@@ -832,11 +1029,11 @@ async function refreshState() {
       const btnAutoBan = document.getElementById('btnToggleAutoBan');
       if (data.rules.autoBan) {
         if (bAutoBan) { bAutoBan.textContent = 'ACTIVO'; bAutoBan.className = 'pill-state pill-on'; }
-        if (cAutoBan) { cAutoBan.textContent = '🚨 ACTIVADO'; cAutoBan.className = 'status-card-value tag-green'; }
+        if (cAutoBan) { cAutoBan.textContent = 'ACTIVADO'; cAutoBan.className = 'status-card-value tag-green'; }
         if (btnAutoBan) btnAutoBan.textContent = 'Desactivar';
       } else {
         if (bAutoBan) { bAutoBan.textContent = 'SOLO BLOQUEAR'; bAutoBan.className = 'pill-state pill-off'; }
-        if (cAutoBan) { cAutoBan.textContent = '⚠️ SOLO BLOQUEAR'; cAutoBan.className = 'status-card-value tag-amber'; }
+        if (cAutoBan) { cAutoBan.textContent = 'SOLO BLOQUEAR'; cAutoBan.className = 'status-card-value tag-amber'; }
         if (btnAutoBan) btnAutoBan.textContent = 'Activar Ban';
       }
 
@@ -846,11 +1043,11 @@ async function refreshState() {
       const btnChests = document.getElementById('btnToggleChests');
       if (data.rules.protectChests) {
         if (bChests) { bChests.textContent = 'BLOQUEADOS'; bChests.className = 'pill-state pill-on'; }
-        if (cChests) { cChests.textContent = '🔒 BLOQUEADOS'; cChests.className = 'status-card-value tag-green'; }
+        if (cChests) { cChests.textContent = 'BLOQUEADOS'; cChests.className = 'status-card-value tag-green'; }
         if (btnChests) btnChests.textContent = 'Abrir a todos';
       } else {
         if (bChests) { bChests.textContent = 'ABIERTOS'; bChests.className = 'pill-state pill-off'; }
-        if (cChests) { cChests.textContent = '🔓 ABIERTOS'; cChests.className = 'status-card-value tag-amber'; }
+        if (cChests) { cChests.textContent = 'ABIERTOS'; cChests.className = 'status-card-value tag-amber'; }
         if (btnChests) btnChests.textContent = 'Bloquear';
       }
 
@@ -860,12 +1057,27 @@ async function refreshState() {
       const btnExp = document.getElementById('btnToggleExplosion');
       if (data.rules.antiExplosion) {
         if (bExp) { bExp.textContent = 'SEGURO'; bExp.className = 'pill-state pill-on'; }
-        if (cExp) { cExp.textContent = '🛡️ SEGURO'; cExp.className = 'status-card-value tag-green'; }
+        if (cExp) { cExp.textContent = 'SEGURO'; cExp.className = 'status-card-value tag-green'; }
         if (btnExp) btnExp.textContent = 'Permitir daño';
       } else {
         if (bExp) { bExp.textContent = 'DESTRUCTORAS'; bExp.className = 'pill-state pill-off'; }
-        if (cExp) { cExp.textContent = '💥 DESTRUCTORAS'; cExp.className = 'status-card-value tag-red'; }
+        if (cExp) { cExp.textContent = 'DESTRUCTORAS'; cExp.className = 'status-card-value tag-red'; }
         if (btnExp) btnExp.textContent = 'Proteger';
+      }
+
+      // PvP
+      const bPvp = document.getElementById('badgePvp');
+      const cPvp = document.getElementById('cardPvpStatus');
+      const btnPvp = document.getElementById('btnTogglePvp');
+      const pvpOn = data.rules.globalPvP !== false;
+      if (pvpOn) {
+        if (bPvp) { bPvp.textContent = 'ACTIVADO'; bPvp.className = 'pill-state pill-on'; }
+        if (cPvp) { cPvp.textContent = 'ACTIVADO'; cPvp.className = 'status-card-value tag-green'; }
+        if (btnPvp) btnPvp.textContent = 'Desactivar PvP';
+      } else {
+        if (bPvp) { bPvp.textContent = 'DESACTIVADO'; bPvp.className = 'pill-state pill-off'; }
+        if (cPvp) { cPvp.textContent = 'DESACTIVADO'; cPvp.className = 'status-card-value tag-muted'; }
+        if (btnPvp) btnPvp.textContent = 'Activar PvP';
       }
 
       // House Zone info
@@ -900,8 +1112,24 @@ async function refreshState() {
     // Players Online list
     const pContainer = document.getElementById('onlinePlayersContainer');
     const pCount = document.getElementById('cardPlayerCount');
+    const qSelect = document.getElementById('quickPlayerSelect');
+    const vSelect = document.getElementById('voiceRadioPlayerSelect');
     const onlinePlayers = data.players || [];
     if (pCount) pCount.textContent = onlinePlayers.length + ' / 20';
+
+    // Update select dropdowns
+    if (qSelect && document.activeElement !== qSelect) {
+      const curVal = qSelect.value;
+      qSelect.innerHTML = '<option value="">Selecciona jugador...</option>'
+        + onlinePlayers.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+      if (curVal) qSelect.value = curVal;
+    }
+    if (vSelect && document.activeElement !== vSelect) {
+      const curV = vSelect.value;
+      vSelect.innerHTML = '<option value="">Seleccionar jugador para acercar oyente...</option>'
+        + onlinePlayers.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+      if (curV) vSelect.value = curV;
+    }
 
     if (pContainer) {
       if (onlinePlayers.length > 0) {
@@ -912,25 +1140,25 @@ async function refreshState() {
             + '<div class="player-avatar">' + p.substring(0, 2).toUpperCase() + '</div>'
             + '<div>'
             + '<div class="player-name">' + p + (isXavi ? ' <span style="color:#f59e0b;font-size:11px;">[ADMIN]</span>' : '') + '</div>'
-            + '<div class="player-sub">Conectado en vivo</div>'
+            + '<div class="player-sub">Conectado</div>'
             + '</div>'
             + '</div>'
-            + '<div class="btn-row">'
-            + '<button class="btn-dark btn-sm" data-cmd="tp ' + p + ' Xavi" onclick="runCmd(this.dataset.cmd)">📍 Traer</button>'
-            + '<button class="btn-dark btn-sm" data-cmd="congelar ' + p + '" onclick="runCmd(this.dataset.cmd)">❄️ Congelar</button>'
-            + '<button class="btn-dark btn-sm" data-cmd="curar ' + p + '" onclick="runCmd(this.dataset.cmd)">❤️ Curar</button>'
-            + (!isXavi ? '<button class="btn-amber btn-sm" data-player="' + p + '" onclick="quickWarnUser(this.dataset.player)">⚠️ Warn</button>' : '')
-            + '<button class="btn-amber btn-sm" data-cmd="expulsar ' + p + '" onclick="runCmd(this.dataset.cmd)">Kick</button>'
-            + (!isXavi ? '<button class="btn-red btn-sm" data-player="' + p + '" onclick="quickBanUser(this.dataset.player)">🔨 Ban</button>' : '')
+            + '<div style="display:flex; gap:6px;">'
+            + '<button class="btn-sm" data-cmd="op ' + p + '" onclick="runCmd(this.dataset.cmd)">Hacer OP</button>'
+            + '<button class="btn-sm" data-cmd="gamemode 3 ' + p + '" onclick="runCmd(this.dataset.cmd)">Espectador</button>'
+            + '<button class="btn-sm" data-cmd="tp ' + p + ' Xavi" onclick="runCmd(this.dataset.cmd)">Traer</button>'
+            + (!isXavi ? '<button class="btn-amber btn-sm" data-player="' + p + '" onclick="quickWarnUser(this.dataset.player)">Warn</button>' : '')
+            + '<button class="btn-amber btn-sm" data-cmd="kick ' + p + '" onclick="runCmd(this.dataset.cmd)">Kick</button>'
+            + (!isXavi ? '<button class="btn-red btn-sm" data-player="' + p + '" onclick="quickBanUser(this.dataset.player)">Ban</button>' : '')
             + '</div>'
             + '</div>';
         }).join('');
       } else {
-        pContainer.innerHTML = '<div style="color:var(--muted); font-size:13px; text-align:center; padding:16px; background:#0b1120; border-radius:10px; border:1px dashed var(--border);">No hay ningún jugador conectado ahora mismo.</div>';
+        pContainer.innerHTML = '<div style="color:var(--muted); font-size:12px; text-align:center; padding:14px; background:#0d131f; border-radius:8px; border:1px dashed var(--border);">No hay ningún jugador conectado ahora mismo.</div>';
       }
     }
 
-    // Datalist of known players for autocompletion
+    // Datalist of known players
     const dl = document.getElementById('knownPlayersList');
     if (dl && data.knownPlayers) {
       dl.innerHTML = data.knownPlayers.map(function(k) { return '<option value="' + k + '">'; }).join('');
@@ -945,59 +1173,91 @@ async function refreshState() {
         wContainer.innerHTML = warnedEntries.map(function(entry) {
           const player = entry[0];
           const list = entry[1];
-          return '<div style="background:#0b1120; border:1px solid #78350f; border-radius:10px; padding:10px 14px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">'
+          return '<div style="background:#0d131f; border:1px solid #78350f; border-radius:8px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">'
             + '<div>'
             + '<div style="display:flex; align-items:center; gap:6px;">'
-            + '<span style="font-weight:700; color:#fbbf24; font-size:13px;">⚠️ ' + player + '</span>'
-            + '<span class="pill-state pill-off" style="font-size:10px;">' + list.length + '/4 ADVERTENCIAS</span>'
+            + '<span style="font-weight:700; color:#fbbf24; font-size:13px;">' + player + '</span>'
+            + '<span class="pill-state pill-off" style="font-size:10px;">' + list.length + '/4 WARNS</span>'
             + '</div>'
-            + '<div style="font-size:11px; color:var(--muted); margin-top:4px;">'
-            + list.map(function(m, idx) { return '<div>' + (idx + 1) + '. ' + m + '</div>'; }).join('')
+            + '<div style="font-size:11px; color:var(--muted); margin-top:2px;">'
+            + list.map((m, idx) => '<div>' + (idx + 1) + '. ' + m + '</div>').join('')
             + '</div>'
             + '</div>'
-            + '<div class="btn-row">'
-            + '<button class="btn-amber btn-sm" data-player="' + player + '" onclick="quickWarnUser(this.dataset.player)">+1 Warn</button>'
-            + '<button class="btn-dark btn-sm" data-player="' + player + '" onclick="quickUnwarn(this.dataset.player)">-1 Warn</button>'
-            + '<button class="btn-green btn-sm" data-player="' + player + '" onclick="quickClearWarns(this.dataset.player)">Limpiar</button>'
+            + '<div style="display:flex; gap:6px;">'
+            + '<button class="btn-sm btn-amber" data-player="' + player + '" onclick="quickWarnUser(this.dataset.player)">+1</button>'
+            + '<button class="btn-sm" data-player="' + player + '" onclick="quickUnwarn(this.dataset.player)">-1</button>'
+            + '<button class="btn-sm btn-green" data-player="' + player + '" onclick="quickClearWarns(this.dataset.player)">Limpiar</button>'
             + '</div>'
             + '</div>';
         }).join('');
       } else {
-        wContainer.innerHTML = '<div style="color:var(--muted); font-size:12px; background:#0b1120; border-radius:8px; padding:10px 14px; border:1px dashed var(--border);">No hay jugadores con advertencias activas (todos limpios 0/4).</div>';
+        wContainer.innerHTML = '<div style="color:var(--muted); font-size:12px; background:#0d131f; border-radius:8px; padding:10px; border:1px dashed var(--border);">No hay jugadores con advertencias activas.</div>';
       }
     }
 
-    // Render Alliances
+    // Banned players list
+    const bContainer = document.getElementById('bannedListContainer');
+    if (bContainer) {
+      if (data.banned && data.banned.length > 0) {
+        bContainer.innerHTML = data.banned.map(function(b) {
+          return '<div style="background:#0d131f; border:1px solid #e11d48; border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
+            + '<div>'
+            + '<div style="font-weight:700; color:#fb7185; font-size:13px;">' + b.name + '</div>'
+            + '<div style="font-size:11px; color:var(--muted);">Motivo: ' + (b.reason || 'Sin motivo') + '</div>'
+            + '</div>'
+            + '<button class="btn-green btn-sm" data-player="' + b.name + '" onclick="quickUnban(this.dataset.player)">Desbanear</button>'
+            + '</div>';
+        }).join('');
+      } else {
+        bContainer.innerHTML = '<div style="color:#34d399; font-size:12px; background:#0d131f; padding:10px; border-radius:8px; border:1px solid var(--border);">No hay ningún jugador baneado.</div>';
+      }
+    }
+
+    // CHAT FEED UPDATE
+    const chatFeed = document.getElementById('chatFeed');
+    if (chatFeed && data.chatMessages) {
+      const wasAtBottom = chatFeed.scrollTop + chatFeed.clientHeight >= chatFeed.scrollHeight - 30;
+      if (data.chatMessages.length === 0) {
+        chatFeed.innerHTML = '<div class="chat-system">No hay mensajes recientes en el chat.</div>';
+      } else {
+        chatFeed.innerHTML = data.chatMessages.map(function(m) {
+          if (m.type === 'join' || m.type === 'leave') {
+            return '<div class="chat-system">[' + m.time + '] <b>' + m.user + '</b> ' + m.text + '</div>';
+          }
+          const isAdm = m.user.toLowerCase() === 'xavi' || m.user.toLowerCase().includes('admin');
+          return '<div class="chat-msg">'
+            + '<span class="chat-time">[' + m.time + ']</span> '
+            + '<span class="chat-user' + (isAdm ? ' admin' : '') + '">' + m.user + ':</span> '
+            + '<span class="chat-text">' + m.text + '</span>'
+            + '</div>';
+        }).join('');
+      }
+      if (wasAtBottom) chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    // Alliances
     const alContainer = document.getElementById('alliancesContainer');
     if (alContainer && data.alliances) {
       const allAl = Object.values(data.alliances);
       if (allAl.length > 0) {
         alContainer.innerHTML = allAl.map(function(al) {
           const isEnemy = al.enemies && al.enemies.length > 0;
-          const ffBg = al.friendlyFire ? '#7f1d1d; color:#fca5a5' : '#064e3b; color:#6ee7b7';
-          const ffText = al.friendlyFire ? '🔥 Fuego Amigo ON' : '🛡️ Fuego Amigo OFF';
           const enemyHtml = isEnemy
-            ? '<div style="font-size:11px; color:#ef4444; background:#450a0a; padding:4px 8px; border-radius:6px; border:1px solid #7f1d1d;">⚔️ En Guerra con: ' + al.enemies.join(', ') + '</div>'
-            : '<div style="font-size:11px; color:#10b981;">🕊️ En Paz (Sin guerras)</div>';
-          const memCount = al.members ? al.members.length : 0;
-          const memList = (al.members || []).join(', ');
-          return '<div style="background:#0b1120; border:1px solid var(--border); border-radius:12px; padding:14px;">'
-            + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">'
-            + '<span style="font-size:15px; font-weight:800; color:#38bdf8;">[' + al.name + ']</span>'
-            + '<span style="font-size:11px; padding:2px 8px; border-radius:6px; font-weight:700; background:' + ffBg + ';">' + ffText + '</span>'
-            + '</div>'
-            + '<div style="font-size:12px; color:var(--muted); margin-bottom:4px;">👑 Líder: <span style="color:#fbbf24; font-weight:700;">' + al.leader + '</span></div>'
-            + '<div style="font-size:12px; color:var(--muted); margin-bottom:8px;">👥 Miembros (' + memCount + '): <span style="color:#f1f5f9;">' + memList + '</span></div>'
-            + '<div style="font-size:12px; color:var(--muted); margin-bottom:8px;">⚔️ Bajas PvP: <span style="color:#f87171; font-weight:700;">' + (al.kills || 0) + '</span></div>'
+            ? '<div style="font-size:11px; color:#ef4444;">En Guerra con: ' + al.enemies.join(', ') + '</div>'
+            : '<div style="font-size:11px; color:#10b981;">En Paz</div>';
+          return '<div style="background:#0d131f; border:1px solid var(--border); border-radius:8px; padding:12px;">'
+            + '<div style="font-size:14px; font-weight:700; color:#38bdf8; margin-bottom:4px;">[' + al.name + ']</div>'
+            + '<div style="font-size:12px; color:var(--muted);">Líder: <b style="color:#f1f5f9;">' + al.leader + '</b></div>'
+            + '<div style="font-size:12px; color:var(--muted);">Miembros: ' + (al.members || []).join(', ') + '</div>'
             + enemyHtml
             + '</div>';
         }).join('');
       } else {
-        alContainer.innerHTML = '<div style="grid-column:1/-1; color:var(--muted); font-size:13px; text-align:center; padding:16px; background:#0b1120; border-radius:10px; border:1px dashed var(--border);">No hay ninguna alianza creada todavía. Usa /alianza crear &lt;nombre&gt; dentro de Minecraft para fundar tu propio clan.</div>';
+        alContainer.innerHTML = '<div style="grid-column:1/-1; color:var(--muted); font-size:12px; text-align:center; padding:14px; background:#0d131f; border-radius:8px; border:1px dashed var(--border);">No hay clanes creados todavía (/alianza crear &lt;nombre&gt;).</div>';
       }
     }
 
-    // Render Honor RDR2
+    // Honor
     const hContainer = document.getElementById('honorListContainer');
     if (hContainer) {
       const allHonor = data.honor || {};
@@ -1007,61 +1267,30 @@ async function refreshState() {
         hContainer.innerHTML = playersToRender.map(function(pName) {
           const pLower = pName.toLowerCase();
           const score = (allHonor[pLower] !== undefined) ? allHonor[pLower] : 0;
-          let title = '⚖️ Neutral';
+          let title = 'Neutral';
           let titleColor = '#94a3b8';
-          if (score >= 80) { title = '🌟 Héroe Legendario'; titleColor = '#f59e0b'; }
-          else if (score >= 40) { title = '✨ Forastero Justo'; titleColor = '#eab308'; }
-          else if (score >= 10) { title = '🤠 Buen Samaritano'; titleColor = '#10b981'; }
-          else if (score > -10) { title = '⚖️ Neutral'; titleColor = '#94a3b8'; }
-          else if (score > -40) { title = '🗡️ Buscavidas Despiadado'; titleColor = '#f87171'; }
-          else if (score > -80) { title = '🔥 Forajido Peligroso'; titleColor = '#dc2626'; }
-          else { title = '☠️ Enemigo Público (Buscado)'; titleColor = '#991b1b'; }
+          if (score >= 40) { title = 'Héroe Justo'; titleColor = '#eab308'; }
+          else if (score >= 10) { title = 'Samaritano'; titleColor = '#10b981'; }
+          else if (score > -10) { title = 'Neutral'; titleColor = '#94a3b8'; }
+          else if (score > -40) { title = 'Buscavidas'; titleColor = '#f87171'; }
+          else { title = 'Forajido Peligroso'; titleColor = '#dc2626'; }
 
           const pct = Math.max(0, Math.min(100, Math.round(((score + 100) / 200) * 100)));
           const isXavi = pLower === 'xavi';
-          const nameCol = isXavi ? '#fbbf24' : '#fff';
-          const scoreCol = score >= 0 ? '#34d399' : '#f87171';
           const scoreTxt = (score >= 0 ? '+' + score : score) + ' Honor';
 
-          return '<div style="background:#0b1120; border:1px solid var(--border); border-radius:12px; padding:12px 16px;">'
+          return '<div style="background:#0d131f; border:1px solid var(--border); border-radius:8px; padding:10px 14px;">'
             + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
-            + '<div style="display:flex; align-items:center; gap:8px;">'
-            + '<span style="font-weight:800; font-size:14px; color:' + nameCol + ';">' + pName + '</span>'
-            + '<span style="font-size:11px; font-weight:700; color:' + titleColor + ';">' + title + '</span>'
+            + '<div><b style="color:' + (isXavi ? '#fbbf24' : '#fff') + ';">' + pName + '</b> <span style="font-size:11px; color:' + titleColor + ';">(' + title + ')</span></div>'
+            + '<b style="font-size:12px; color:' + (score >= 0 ? '#34d399' : '#f87171') + ';">' + scoreTxt + '</b>'
             + '</div>'
-            + '<span style="font-weight:800; font-size:14px; color:' + scoreCol + ';">' + scoreTxt + '</span>'
-            + '</div>'
-            + '<div style="display:flex; align-items:center; gap:10px;">'
-            + '<span style="font-size:14px;">💀</span>'
-            + '<div style="flex:1; height:10px; background:#1e293b; border-radius:5px; position:relative; overflow:visible;">'
-            + '<div style="position:absolute; left:0; width:50%; height:100%; border-right:2px solid #64748b; background:linear-gradient(to right, #ef4444, #64748b); border-top-left-radius:5px; border-bottom-left-radius:5px; opacity:0.3;"></div>'
-            + '<div style="position:absolute; left:50%; width:50%; height:100%; background:linear-gradient(to right, #64748b, #10b981); border-top-right-radius:5px; border-bottom-right-radius:5px; opacity:0.3;"></div>'
-            + '<div style="position:absolute; top:-3px; left:calc(' + pct + '% - 8px); width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 0 8px #fff; border:2px solid ' + titleColor + ';"></div>'
-            + '</div>'
-            + '<span style="font-size:14px;">🌟</span>'
+            + '<div style="height:6px; background:#1e293b; border-radius:3px; position:relative;">'
+            + '<div style="position:absolute; top:-3px; left:calc(' + pct + '% - 6px); width:12px; height:12px; border-radius:50%; background:#fff; border:2px solid ' + titleColor + ';"></div>'
             + '</div>'
             + '</div>';
         }).join('');
       } else {
-        hContainer.innerHTML = '<div style="color:var(--muted); font-size:13px; text-align:center; padding:16px;">No hay datos de honor disponibles aún.</div>';
-      }
-    }
-
-    // Banned players list
-    const bContainer = document.getElementById('bannedListContainer');
-    if (bContainer) {
-      if (data.banned && data.banned.length > 0) {
-        bContainer.innerHTML = data.banned.map(function(b) {
-          return '<div style="background:#0b1120; border:1px solid #e11d48; border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
-            + '<div>'
-            + '<div style="font-weight:700; color:#fb7185; font-size:13px;">🚫 ' + b.name + '</div>'
-            + '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Motivo: ' + (b.reason || 'Sin motivo especificado') + '</div>'
-            + '</div>'
-            + '<button class="btn-green btn-sm" data-player="' + b.name + '" onclick="quickUnban(this.dataset.player)">✅ Desbanear</button>'
-            + '</div>';
-        }).join('');
-      } else {
-        bContainer.innerHTML = '<div style="color:#34d399; font-size:12px; background:#0b1120; padding:10px 14px; border-radius:8px; border:1px solid var(--border);">✅ No hay ningún jugador baneado actualmente.</div>';
+        hContainer.innerHTML = '<div style="color:var(--muted); font-size:12px; text-align:center; padding:14px;">No hay datos de honor disponibles.</div>';
       }
     }
 
@@ -1076,7 +1305,7 @@ async function refreshState() {
   } catch (err) {
     console.error('Error in refreshState:', err);
     const badge = document.getElementById('statusBadge');
-    if (badge) { badge.innerHTML = '<div class="pulse-dot"></div> 🔴 CONSOLA DESCONECTADA'; badge.className = 'status-badge offline'; }
+    if (badge) { badge.innerHTML = '<div class="pulse-dot"></div> CONSOLA DESCONECTADA'; badge.className = 'status-badge offline'; }
   }
 }
 
