@@ -416,7 +416,7 @@
     <div id="cardPlayerCount" class="status-card-value tag-blue">0 / 20</div>
   </div>
   <div class="status-card">
-    <div class="status-card-label">Auto-Ban Casa</div>
+    <div class="status-card-label">Auto-Kick Casa</div>
     <div id="cardAutoBanStatus" class="status-card-value tag-green">ACTIVADO</div>
   </div>
   <div class="status-card">
@@ -486,7 +486,7 @@
     <div id="radioIframeContainer"></div>
   </div>
 
-  <!-- 3. REGLAS DE LA CASA Y AUTO-BAN -->
+  <!-- 3. REGLAS DE LA CASA Y AUTO-KICK -->
   <div class="card col-6">
     <div class="card-header">
       <div class="card-title">Reglas de tu Casa y Protección</div>
@@ -495,8 +495,8 @@
 
     <div class="rule-box">
       <div>
-        <div class="rule-desc-title">Auto-Ban al Romper en tu Casa</div>
-        <div class="rule-desc-sub">Banea automáticamente al jugador que rompa o queme bloques en tu propiedad.</div>
+        <div class="rule-desc-title">Auto-Kick al Intentar Dañar tu Casa</div>
+        <div class="rule-desc-sub">Expulsa temporalmente del servidor a quien intente romper o quemar bloques (la casa queda intacta y pueden volver a entrar).</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <span id="badgeAutoBan" class="pill-state pill-on">ACTIVO</span>
@@ -1038,7 +1038,7 @@ async function refreshState() {
       } else {
         if (bAutoBan) { bAutoBan.textContent = 'SOLO BLOQUEAR'; bAutoBan.className = 'pill-state pill-off'; }
         if (cAutoBan) { cAutoBan.textContent = 'SOLO BLOQUEAR'; cAutoBan.className = 'status-card-value tag-amber'; }
-        if (btnAutoBan) btnAutoBan.textContent = 'Activar Ban';
+        if (btnAutoBan) btnAutoBan.textContent = 'Activar Kick';
       }
 
       // Protect Chests
