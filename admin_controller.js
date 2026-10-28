@@ -22,6 +22,7 @@ let tunnelProcess = null;
 let publicWebUrl = null;
 let publicWsUrl = null;
 let tunnelStatus = 'inactivo'; // 'inactivo', 'conectando', 'activo', 'error'
+let adminChatHistory = [];
 
 const WORKER_URL = 'https://server-cumbres.codenautajavier.workers.dev';
 const WORKER_SECRET = 'xaviadmin123';
@@ -558,27 +559,54 @@ function getServerState() {
   let chatMessages = [];
   try {
     if (fs.existsSync(logPath)) {
-      const lines = fs.readFileSync(logPath, 'utf8').split(/\r?\n/);
-      logs = lines.slice(-70).join('\n');
-      for (const line of lines.slice(-250)) {
-        const chatMatch = line.match(/\[(\d{2}:\d{2}:\d{2})\].*?:\s+<([^>]+)>\s+(.*)/);
-        if (chatMatch) {
-          chatMessages.push({ time: chatMatch[1], user: chatMatch[2], text: chatMatch[3], type: 'chat' });
-          continue;
-        }
-        const joinMatch = line.match(/\[(\d{2}:\d{2}:\d{2})\].*?:\s+([a-zA-Z0-9_]{2,16})\s+(joined the game|left the game)/);
-        if (joinMatch) {
-          const isJoin = joinMatch[3].includes('joined');
-          chatMessages.push({
-            time: joinMatch[1],
-            user: joinMatch[2],
-            text: isJoin ? 'ha entrado al juego' : 'ha salido del juego',
-            type: isJoin ? 'join' : 'leave'
-          });
+      const allLines = fs.readFileSync(logPath, 'utf8').split(/\r?\n/);
+      
+      // Filter out RCON polling noise for the clean console view
+      const cleanLines = allLines.filter(l => !l.includes('Rcon connection from:') && !l.includes('RCON Listener'));
+      logs = cleanLines.slice(-70).join('\n').replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+
+      // Parse real chat from last 1500 lines stripping ANSI codes
+      const chatScan = allLines.slice(-1500);
+      for (let rawLine of chatScan) {
+        const line = rawLine.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+        if (line.includes('Async Chat Thread')) {
+          const timeMatch = line.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
+          const time = timeMatch ? timeMatch[1] : '';
+          const after = line.split(/\[Async Chat Thread.*?\]:\s+/)[1];
+          if (after) {
+            const m = after.match(/^(?:\[[^\]]*\]\s*)?(?:<([^>]+)>|([a-zA-Z0-9_]{2,16})):\s+(.*)/);
+            if (m) {
+              chatMessages.push({
+                time,
+                user: (m[1] || m[2]).trim(),
+                text: m[3].trim(),
+                type: 'chat'
+              });
+            }
+          }
+        } else if (line.includes('joined the game') || line.includes('left the game')) {
+          const timeMatch = line.match(/^\[(\d{2}:\d{2}:\d{2})\]/);
+          const time = timeMatch ? timeMatch[1] : '';
+          const jm = line.match(/:\s+([a-zA-Z0-9_]{2,16})\s+(joined the game|left the game)/);
+          if (jm) {
+            chatMessages.push({
+              time,
+              user: jm[1],
+              text: jm[2].includes('joined') ? 'ha entrado al juego' : 'ha salido del juego',
+              type: jm[2].includes('joined') ? 'join' : 'leave'
+            });
+          }
         }
       }
     }
   } catch (e) {}
+
+  // Combine log chat with messages sent from the admin web panel
+  if (adminChatHistory && adminChatHistory.length > 0) {
+    chatMessages = chatMessages.concat(adminChatHistory);
+    chatMessages.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }
+  if (chatMessages.length > 80) chatMessages = chatMessages.slice(-80);
 
   let rules = {
     houseProtection: true,
@@ -1704,6 +1732,18 @@ function startPanelServer() {
           const { message } = JSON.parse(body || '{}');
           const clean = (message || '').trim();
           if (clean) {
+            const now = new Date();
+            const timeStr = String(now.getHours()).padStart(2, '0') + ':' +
+                            String(now.getMinutes()).padStart(2, '0') + ':' +
+                            String(now.getSeconds()).padStart(2, '0');
+            adminChatHistory.push({
+              time: timeStr,
+              user: 'Xavi [Admin]',
+              text: clean,
+              type: 'admin'
+            });
+            if (adminChatHistory.length > 50) adminChatHistory.shift();
+
             const safeMsg = clean.replace(/"/g, '\\"');
             await sendRconCommand(`tellraw @a [{"text":"[Admin] Xavi: ","color":"gold","bold":true},{"text":"${safeMsg}","color":"white"}]`);
           }
