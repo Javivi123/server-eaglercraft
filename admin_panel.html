@@ -432,6 +432,10 @@
     <div id="cardPvpStatus" class="status-card-value tag-amber">ACTIVADO</div>
   </div>
   <div class="status-card">
+    <div class="status-card-label">Inventario al Morir</div>
+    <div id="cardKeepInventoryStatus" class="status-card-value tag-green">SE CONSERVA</div>
+  </div>
+  <div class="status-card">
     <div class="status-card-label">Auto-Apagado</div>
     <div id="cardIdleStatus" class="status-card-value tag-blue">10 MIN</div>
     <div id="cardIdleSub" style="font-size:11px; color:var(--muted); margin-top:2px;">PC en reposo</div>
@@ -545,6 +549,17 @@
       <div style="display:flex; align-items:center; gap:8px;">
         <span id="badgePvp" class="pill-state pill-on">ACTIVADO</span>
         <button id="btnTogglePvp" class="btn-sm" onclick="toggleRule('pvp')">Cambiar</button>
+      </div>
+    </div>
+
+    <div class="rule-box">
+      <div>
+        <div class="rule-desc-title">Conservar Inventario al Morir (keepInventory)</div>
+        <div class="rule-desc-sub">Si está activado, conservas tus cosas al morir. Si está desactivado, sueltas todo el inventario si te matan o mueres (se guarda al apagar el server).</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span id="badgeKeepInventory" class="pill-state pill-on">SE CONSERVA</span>
+        <button id="btnToggleKeepInventory" class="btn-sm" onclick="toggleRule('keepinventory')">Cambiar</button>
       </div>
     </div>
 
@@ -732,6 +747,8 @@ async function toggleRule(ruleType) {
     cmd = currentRules.antiExplosion ? 'antiexplosiones off' : 'antiexplosiones on';
   } else if (ruleType === 'pvp') {
     cmd = 'pvp toggle';
+  } else if (ruleType === 'keepinventory') {
+    cmd = currentRules.keepInventory ? 'keepinventory off' : 'keepinventory on';
   }
   if (cmd) await runCmd(cmd);
 }
@@ -1082,6 +1099,21 @@ async function refreshState() {
         if (bPvp) { bPvp.textContent = 'DESACTIVADO'; bPvp.className = 'pill-state pill-off'; }
         if (cPvp) { cPvp.textContent = 'DESACTIVADO'; cPvp.className = 'status-card-value tag-muted'; }
         if (btnPvp) btnPvp.textContent = 'Activar PvP';
+      }
+
+      // KeepInventory
+      const bKeep = document.getElementById('badgeKeepInventory');
+      const cKeep = document.getElementById('cardKeepInventoryStatus');
+      const btnKeep = document.getElementById('btnToggleKeepInventory');
+      const keepOn = data.rules.keepInventory !== false;
+      if (keepOn) {
+        if (bKeep) { bKeep.textContent = 'SE CONSERVA'; bKeep.className = 'pill-state pill-on'; }
+        if (cKeep) { cKeep.textContent = 'SE CONSERVA'; cKeep.className = 'status-card-value tag-green'; }
+        if (btnKeep) btnKeep.textContent = 'Soltar al morir';
+      } else {
+        if (bKeep) { bKeep.textContent = 'SUELTA TODO'; bKeep.className = 'pill-state pill-off'; }
+        if (cKeep) { cKeep.textContent = 'SUELTA TODO'; cKeep.className = 'status-card-value tag-amber'; }
+        if (btnKeep) btnKeep.textContent = 'Conservar al morir';
       }
 
       // House Zone info

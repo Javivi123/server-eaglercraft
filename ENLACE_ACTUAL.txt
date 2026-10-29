@@ -1,14 +1,1 @@
-=== SERVIDOR EAGLERCRAFT DE XAVI (MODO CASA - CLOUDFLARE) ===
-
-🚀 1. ARCHIVO / LANZADOR AUTOMÁTICO PARA AMIGOS (Nunca cambia y salta la VPN):
-   Tus amigos solo tienen que abrir "Entrar_Servidor_Xavi.html" o usar el
-   Eaglercraft con Auto-Conexión poniendo como servidor: wss://xavi
-
-🌐 2. Túnel Directo de Hoy (100% compatible con la VPN del colegio):
-   Web: https://walked-homepage-jews-swaziland.trycloudflare.com
-   WS:  wss://walked-homepage-jews-swaziland.trycloudflare.com
-
-🛡️ 3. PANEL DE CONTROL DE XAVI:
-   http://localhost:8090
-
-Generado: 28/10/2026, 20:39:44
+Servidor apagado.

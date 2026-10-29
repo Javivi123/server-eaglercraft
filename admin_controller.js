@@ -447,6 +447,7 @@ function parseConfigYaml(yml) {
     protectChests: getBool('protect-house-chests', true),
     antiExplosion: getBool('anti-explosion-destroy', true),
     antiFire: getBool('anti-fire-spread', true),
+    keepInventory: getBool('keep-inventory', true),
     globalBuildLock: getBool('global-build-lock', false),
     friends: getFriends(),
     zone: getZone()
@@ -614,6 +615,7 @@ function getServerState() {
     protectChests: true,
     antiExplosion: true,
     antiFire: true,
+    keepInventory: true,
     globalBuildLock: false,
     friends: [],
     zone: { x: -276, y: 67, z: -10, radius: 32 }
