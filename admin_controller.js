@@ -525,6 +525,35 @@ function parseHonorYaml(text) {
   return honor;
 }
 
+function parseChestsYaml(text) {
+  const chests = [];
+  if (!text) return chests;
+  const lines = text.split(/\r?\n/);
+  let cur = null;
+  for (const line of lines) {
+    const mHead = line.match(/^\s{2}([a-zA-Z0-9_\-]+):/);
+    if (mHead) {
+      cur = { id: mHead[1], world: 'world', x: 0, y: 0, z: 0, owner: '', claimedDate: '' };
+      chests.push(cur);
+      continue;
+    }
+    if (!cur) continue;
+    const mWorld = line.match(/^\s{4}world:\s*['"]?(.*?)['"]?$/);
+    if (mWorld) { cur.world = mWorld[1]; continue; }
+    const mX = line.match(/^\s{4}x:\s*(-?\d+)/);
+    if (mX) { cur.x = parseInt(mX[1], 10); continue; }
+    const mY = line.match(/^\s{4}y:\s*(-?\d+)/);
+    if (mY) { cur.y = parseInt(mY[1], 10); continue; }
+    const mZ = line.match(/^\s{4}z:\s*(-?\d+)/);
+    if (mZ) { cur.z = parseInt(mZ[1], 10); continue; }
+    const mOwner = line.match(/^\s{4}owner:\s*['"]?(.*?)['"]?$/);
+    if (mOwner) { cur.owner = mOwner[1]; continue; }
+    const mDate = line.match(/^\s{4}claimedDate:\s*['"]?(.*?)['"]?$/);
+    if (mDate) { cur.claimedDate = mDate[1]; continue; }
+  }
+  return chests;
+}
+
 function getServerState() {
   const bannedPath = path.join(SERVER_DIR, 'server', 'banned-players.json');
   const usercachePath = path.join(SERVER_DIR, 'server', 'usercache.json');
@@ -532,7 +561,8 @@ function getServerState() {
   const cfgPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'config.yml');
   const warnsPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'warnings.yml');
   const alliancesPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'alliances.yml');
-    const honorPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'honor.yml');
+  const honorPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'honor.yml');
+  const chestsPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'chests.yml');
 
   let banned = [];
   try {
@@ -634,7 +664,10 @@ function getServerState() {
   let honor = {};
   try { if (fs.existsSync(honorPath)) honor = parseHonorYaml(fs.readFileSync(honorPath, 'utf8')); } catch (e) {}
 
-  return { banned, knownPlayers, logs, chatMessages, rules, warnings, alliances, honor };
+  let chests = [];
+  try { if (fs.existsSync(chestsPath)) chests = parseChestsYaml(fs.readFileSync(chestsPath, 'utf8')); } catch (e) {}
+
+  return { banned, knownPlayers, logs, chatMessages, rules, warnings, alliances, honor, chests };
 }
 
 const HTML_PAGE = `<!DOCTYPE html>

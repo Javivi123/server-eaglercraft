@@ -658,7 +658,29 @@
     </div>
   </div>
 
-  <!-- 7. CONSOLA DE COMANDOS Y BACKUPS -->
+  <!-- 7. CONTROL DE COFRES PRIVADOS -->
+  <div class="card col-12">
+    <div class="card-header">
+      <div class="card-title">Control de Cofres Privados</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-sm" onclick="runCmd('listacofres')">Ver en Consola</button>
+      </div>
+    </div>
+    
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; background:#0d131f; border:1px solid var(--border); border-radius:8px; padding:12px; align-items:center;">
+      <div style="font-size:12px; font-weight:700; color:#38bdf8;">Asignar o Cambiar Dueño:</div>
+      <input type="text" id="chestCoordInput" placeholder="Coordenadas X Y Z (ej. -276 67 -10)" style="padding:6px 10px; background:#1e293b; border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px; flex:1; min-width:180px;">
+      <input type="text" id="chestOwnerInput" placeholder="Nuevo Dueño (ej. taetti)" style="padding:6px 10px; background:#1e293b; border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px; width:160px;">
+      <button class="btn-sm btn-green" onclick="assignChestOwner()">Asignar Dueño</button>
+      <button class="btn-sm btn-red" onclick="freeChest()">Liberar Cofre</button>
+    </div>
+
+    <div id="chestsListContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px; max-height:240px; overflow-y:auto;">
+      <div style="color:var(--muted); font-size:12px; text-align:center; padding:14px; grid-column:1/-1;">Cargando cofres protegidos...</div>
+    </div>
+  </div>
+
+  <!-- 8. CONSOLA DE COMANDOS Y BACKUPS -->
   <div class="card col-12">
     <div class="card-header">
       <div class="card-title">Consola del Servidor y Copias de Seguridad</div>
@@ -1330,6 +1352,29 @@ async function refreshState() {
       }
     }
 
+    // Chests rendering
+    const chContainer = document.getElementById('chestsListContainer');
+    if (chContainer) {
+      const chests = data.chests || [];
+      if (chests.length === 0) {
+        chContainer.innerHTML = '<div style="color:var(--muted); font-size:12px; text-align:center; padding:14px; grid-column:1/-1;">No hay cofres reclamados todavía. El primer jugador que abra cada cofre se convertirá en su dueño automáticamente.</div>';
+      } else {
+        chContainer.innerHTML = chests.map(function(ch) {
+          const coordStr = ch.x + ' ' + ch.y + ' ' + ch.z;
+          return '<div style="background:#0d131f; border:1px solid var(--border); border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">'
+            + '<div>'
+            +   '<div style="font-size:12px; font-weight:700; color:#fbbf24;">[' + ch.x + ', ' + ch.y + ', ' + ch.z + '] <span style="font-size:10px; color:var(--muted);">(' + ch.world + ')</span></div>'
+            +   '<div style="font-size:11px; color:var(--muted);">Dueño: <b style="color:#38bdf8;">' + ch.owner + '</b> ' + (ch.claimedDate ? '<span style="color:#64748b;">· ' + ch.claimedDate + '</span>' : '') + '</div>'
+            + '</div>'
+            + '<div style="display:flex; gap:6px;">'
+            +   '<button class="btn-sm" style="font-size:10px; padding:3px 7px;" onclick="document.getElementById(\'chestCoordInput\').value=\'' + coordStr + '\'; document.getElementById(\'chestOwnerInput\').focus();">Editar</button>'
+            +   '<button class="btn-sm btn-red" style="font-size:10px; padding:3px 7px;" onclick="runCmd(\'liberarcofre ' + coordStr + '\')">Liberar</button>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      }
+    }
+
     // Log Console
     const logBox = document.getElementById('logBox');
     if (logBox) {
@@ -1343,6 +1388,25 @@ async function refreshState() {
     const badge = document.getElementById('statusBadge');
     if (badge) { badge.innerHTML = '<div class="pulse-dot"></div> CONSOLA DESCONECTADA'; badge.className = 'status-badge offline'; }
   }
+}
+
+function assignChestOwner() {
+  const coords = (document.getElementById('chestCoordInput').value || '').trim();
+  const owner = (document.getElementById('chestOwnerInput').value || '').trim();
+  if (!coords || !owner) {
+    alert('Introduce las coordenadas X Y Z y el nombre del nuevo dueño.');
+    return;
+  }
+  runCmd('duenocofre ' + coords + ' ' + owner);
+}
+
+function freeChest() {
+  const coords = (document.getElementById('chestCoordInput').value || '').trim();
+  if (!coords) {
+    alert('Introduce las coordenadas X Y Z del cofre a liberar.');
+    return;
+  }
+  runCmd('liberarcofre ' + coords);
 }
 
 // Initial fetch and interval
