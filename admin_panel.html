@@ -680,7 +680,37 @@
     </div>
   </div>
 
-  <!-- 8. CONSOLA DE COMANDOS Y BACKUPS -->
+  <!-- 8. SISTEMA DE NERFEO (PROTENGAVILA / OTROS) -->
+  <div class="card col-12">
+    <div class="card-header">
+      <div class="card-title">Sistema de Nerfeo: ProtenGavila (y Jugadores Chetados)</div>
+      <div id="nerfProtenBadge" class="pill-state pill-on">NERF PROTENGAVILA: ACTIVADO</div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; background:#0d131f; border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px; font-weight:700; color:#f8fafc; margin-bottom:4px;">Estado de <span style="color:#38bdf8;">ProtenGavila</span></div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.6;">
+          • <span style="color:#ef4444; font-weight:700;">Vida:</span> 50% (5 corazones en vez de 10)<br>
+          • <span style="color:#ef4444; font-weight:700;">Inventario:</span> 50% (18 ranuras bloqueadas con barreras)<br>
+          • <span style="color:#ef4444; font-weight:700;">Daño:</span> -40% en combate cuerpo a cuerpo<br>
+          • <span style="color:#ef4444; font-weight:700;">Progreso:</span> -50% de XP ganada y Minería balanceada (Fatiga I)
+        </div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button id="toggleProtenNerfBtn" class="btn-sm btn-red" onclick="toggleProtenGavilaNerf()">Desactivar Nerf</button>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; background:#0d131f; border:1px solid var(--border); border-radius:8px; padding:10px; align-items:center;">
+      <div style="font-size:12px; font-weight:700; color:#fbbf24;">Nerfear / Desnerfear a cualquier jugador:</div>
+      <input type="text" id="customNerfPlayerInput" placeholder="Nombre de jugador (ej: ProtenGavila, taetti)..." style="padding:6px 10px; background:#1e293b; border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px; flex:1; min-width:180px;">
+      <button class="btn-sm btn-red" onclick="applyCustomNerf(true)">Aplicar Nerf (50%)</button>
+      <button class="btn-sm btn-green" onclick="applyCustomNerf(false)">Quitar Nerf (Normal)</button>
+    </div>
+  </div>
+
+  <!-- 9. CONSOLA DE COMANDOS Y BACKUPS -->
   <div class="card col-12">
     <div class="card-header">
       <div class="card-title">Consola del Servidor y Copias de Seguridad</div>
@@ -1375,6 +1405,14 @@ async function refreshState() {
       }
     }
 
+    // Render Nerf status
+    let protenNerfed = window.protenNerfLocalState !== undefined ? window.protenNerfLocalState : true;
+    if (data.nerfed && data.nerfed['protengavila'] !== undefined) {
+      protenNerfed = data.nerfed['protengavila'];
+      window.protenNerfLocalState = protenNerfed;
+    }
+    updateProtenNerfUI(protenNerfed);
+
     // Log Console
     const logBox = document.getElementById('logBox');
     if (logBox) {
@@ -1407,6 +1445,41 @@ function freeChest() {
     return;
   }
   runCmd('liberarcofre ' + coords);
+}
+
+function updateProtenNerfUI(on) {
+  const badge = document.getElementById('nerfProtenBadge');
+  const btn = document.getElementById('toggleProtenNerfBtn');
+  if (badge) {
+    badge.textContent = on ? 'NERF PROTENGAVILA: ACTIVADO (50%)' : 'NERF PROTENGAVILA: DESACTIVADO';
+    badge.className = 'pill-state ' + (on ? 'pill-on' : 'pill-off');
+  }
+  if (btn) {
+    btn.textContent = on ? 'Desactivar Nerf' : 'Activar Nerf';
+    btn.className = 'btn-sm ' + (on ? 'btn-red' : 'btn-green');
+  }
+}
+
+function toggleProtenGavilaNerf() {
+  const badge = document.getElementById('nerfProtenBadge');
+  const isCurrentlyOn = badge && badge.className.includes('pill-on');
+  const nextState = !isCurrentlyOn;
+  window.protenNerfLocalState = nextState;
+  updateProtenNerfUI(nextState);
+  runCmd('nerf protengavila ' + (nextState ? 'on' : 'off'));
+}
+
+function applyCustomNerf(enable) {
+  const p = (document.getElementById('customNerfPlayerInput').value || '').trim();
+  if (!p) {
+    alert('Introduce el nombre del jugador.');
+    return;
+  }
+  if (p.toLowerCase() === 'protengavila') {
+    window.protenNerfLocalState = enable;
+    updateProtenNerfUI(enable);
+  }
+  runCmd('nerf ' + p + ' ' + (enable ? 'on' : 'off'));
 }
 
 // Initial fetch and interval

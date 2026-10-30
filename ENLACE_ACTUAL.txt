@@ -5,10 +5,10 @@
    Eaglercraft con Auto-Conexión poniendo como servidor: wss://xavi
 
 🌐 2. Túnel Directo de Hoy (100% compatible con la VPN del colegio):
-   Web: https://wit-bow-edges-cities.trycloudflare.com
-   WS:  wss://wit-bow-edges-cities.trycloudflare.com
+   Web: https://upcoming-assembly-broadway-vegetable.trycloudflare.com
+   WS:  wss://upcoming-assembly-broadway-vegetable.trycloudflare.com
 
 🛡️ 3. PANEL DE CONTROL DE XAVI:
    http://localhost:8090
 
-Generado: 29/10/2026, 12:44:42
+Generado: 30/10/2026, 12:48:30

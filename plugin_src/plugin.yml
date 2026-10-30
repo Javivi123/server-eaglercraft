@@ -1,0 +1,114 @@
+name: XaviAdminProtect
+main: com.xavi.protect.XaviAdminProtect
+version: 1.0.0
+author: Antigravity
+description: Proteccion automatica de la casa de Xavi con Auto-Ban, Auto-Save y Controles de Admin
+commands:
+  ban:
+    description: Banea a un jugador del servidor
+    aliases: [banear]
+  unban:
+    description: Desbanea a un jugador del servidor
+    aliases: [desbanear, pardon]
+  baneados:
+    description: Muestra la lista de jugadores baneados
+    aliases: [banlist]
+  expulsar:
+    description: Expulsa a un jugador del servidor
+    aliases: [kick]
+  protegercasa:
+    description: Fija tu ubicacion actual como la Casa Protegida de Xavi con Auto-Ban
+  addcasa:
+    description: Añade una zona protegida adicional
+  autobancasa:
+    description: Activa o desactiva el auto-ban al romper tu casa
+  cofrescasa:
+    description: Activa o desactiva la proteccion de cofres en tu casa
+  keepinventory:
+    description: Activa o desactiva conservar el inventario al morir
+    aliases: [guardarinventario, conservarinventario]
+  amigos:
+    description: Gestiona que amigos tienen permiso en tu casa
+  infocasa:
+    description: Muestra informacion de las zonas protegidas y reglas
+  casa:
+    description: Te teletransporta a tu casa protegida
+    aliases: [iracasa]
+  congelar:
+    description: Congela o descongela a un jugador
+    aliases: [freeze]
+  god:
+    description: Activa o desactiva modo inmortal
+  fly:
+    description: Activa o desactiva modo vuelo
+  curar:
+    description: Cura vida y hambre al maximo
+    aliases: [heal]
+  pvp:
+    description: Activa o desactiva el PvP en el servidor
+  regla:
+    description: Cambia reglas globales del servidor
+  guardar:
+    description: Fuerza el guardado inmediato del mundo
+  recuperarinventario:
+    description: Restaura el inventario original de Xavi desde New World (8).epk
+  warn:
+    description: Da una advertencia a un jugador (a las 4 advertencias se auto-banea)
+    aliases: [advertir, advertencia]
+  warns:
+    description: Muestra las advertencias de los jugadores
+    aliases: [advertencias, verwarns]
+  unwarn:
+    description: Quita una advertencia a un jugador
+    aliases: [quitarwarn, delwarn]
+  clearwarns:
+    description: Borra todas las advertencias de un jugador
+    aliases: [limpiarwarns]
+  autoapagado:
+    description: Configura el apagado automatico del servidor si no hay jugadores
+    aliases: [autoshutdown, apagarvacio]
+  unirse:
+    description: Unete a una alianza o acepta una invitacion
+    aliases: [unirme, join, entrar, aceptar]
+  crearclan:
+    description: Crea tu propia alianza o clan
+    aliases: [crearalianza, clancrear]
+  invitar:
+    description: Invita a un amigo a tu clan
+    aliases: [invite]
+  salirclan:
+    description: Sal de tu alianza actual
+    aliases: [saliralianza]
+  alianza:
+    description: Sistema de Alianzas y Clanes
+    aliases: [alliance, clan, faccion]
+  ac:
+    description: Chat exclusivo para los miembros de tu alianza
+    aliases: [alliancechat, chatclan]
+  honor:
+    description: Consulta tu nivel de honor estilo RDR2, reputacion y titulos
+    aliases: [mihonor, reputacion]
+  donar:
+    description: Regala el item que tienes en la mano a otro jugador para ganar honor
+    aliases: [giveitem, regalar]
+  forajidos:
+    description: Lista a los forajidos mas buscados del servidor
+    aliases: [topforajidos, outlaws, criminales]
+  heroes:
+    description: Lista a los heroes legendarios del servidor
+    aliases: [topheroes]
+  duenocofre:
+    description: Cambia o asigna el dueno de un cofre (mirando al cofre o con x y z)
+    aliases: [setduenocofre, proprietariocofre, cambiarduenocofre, setcofrer, cofrerdueno]
+  liberarcofre:
+    description: Libera un cofre para que vuelva a estar sin reclamar
+    aliases: [unclaimcofre, desreclamarcofre]
+  infocofre:
+    description: Consulta de quien es el cofre que estas mirando
+    aliases: [vercofre, cofreinfo]
+  listacofres:
+    description: Lista los cofres reclamados en el servidor
+    aliases: [vercofres, claimedchests]
+  nerf:
+    description: Activa o desactiva el nerfeo de jugadores (vida al 50%, inventario al 50%, etc)
+    aliases: [nerfeo, setnerf, nerfear]

@@ -1,7 +1,19 @@
 [
   {
+    "uuid": "26358517-3295-39ea-88dd-a5f1ae48193b",
+    "name": "taetti",
+    "level": 4,
+    "bypassesPlayerLimit": false
+  },
+  {
     "uuid": "c1e49986-3900-3984-9a16-e93be52fdf91",
     "name": "Xavi",
+    "level": 4,
+    "bypassesPlayerLimit": false
+  },
+  {
+    "uuid": "f2cf0e1d-c8bf-3e9e-99e9-a0c3d71e0c23",
+    "name": "Radio_xavi",
     "level": 4,
     "bypassesPlayerLimit": false
   },

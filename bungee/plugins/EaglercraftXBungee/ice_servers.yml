@@ -6,25 +6,25 @@ voice_servers_no_passwd:
 voice_servers_passwd:
   cf_turn_1:
     url: 'turn:turn.cloudflare.com:3478?transport=udp'
-    username: 'g06337516541bf5d169ea454bca77456e27a21ec0f60fa122dfcdd9cf617bc62'
-    password: '22044f67705a1453b677001a6cb4df194fc71d0b588480c099ebdf7085daedaa'
+    username: 'g05b4bb0a900128c3d32d5f4efb64c34c6822d9592bb24ddf72211679bf478ce'
+    password: '9c68204782010e2ae6b7ea67564dc31f39399638debfaad07e4ef8369e5b769d'
   cf_turn_2:
     url: 'turn:turn.cloudflare.com:3478?transport=tcp'
-    username: 'g06337516541bf5d169ea454bca77456e27a21ec0f60fa122dfcdd9cf617bc62'
-    password: '22044f67705a1453b677001a6cb4df194fc71d0b588480c099ebdf7085daedaa'
+    username: 'g05b4bb0a900128c3d32d5f4efb64c34c6822d9592bb24ddf72211679bf478ce'
+    password: '9c68204782010e2ae6b7ea67564dc31f39399638debfaad07e4ef8369e5b769d'
   cf_turn_3:
     url: 'turns:turn.cloudflare.com:5349?transport=tcp'
-    username: 'g06337516541bf5d169ea454bca77456e27a21ec0f60fa122dfcdd9cf617bc62'
-    password: '22044f67705a1453b677001a6cb4df194fc71d0b588480c099ebdf7085daedaa'
+    username: 'g05b4bb0a900128c3d32d5f4efb64c34c6822d9592bb24ddf72211679bf478ce'
+    password: '9c68204782010e2ae6b7ea67564dc31f39399638debfaad07e4ef8369e5b769d'
   cf_turn_4:
     url: 'turn:turn.cloudflare.com:443?transport=udp'
-    username: 'g06337516541bf5d169ea454bca77456e27a21ec0f60fa122dfcdd9cf617bc62'
-    password: '22044f67705a1453b677001a6cb4df194fc71d0b588480c099ebdf7085daedaa'
+    username: 'g05b4bb0a900128c3d32d5f4efb64c34c6822d9592bb24ddf72211679bf478ce'
+    password: '9c68204782010e2ae6b7ea67564dc31f39399638debfaad07e4ef8369e5b769d'
   cf_turn_5:
     url: 'turn:turn.cloudflare.com:80?transport=tcp'
-    username: 'g06337516541bf5d169ea454bca77456e27a21ec0f60fa122dfcdd9cf617bc62'
-    password: '22044f67705a1453b677001a6cb4df194fc71d0b588480c099ebdf7085daedaa'
+    username: 'g05b4bb0a900128c3d32d5f4efb64c34c6822d9592bb24ddf72211679bf478ce'
+    password: '9c68204782010e2ae6b7ea67564dc31f39399638debfaad07e4ef8369e5b769d'
   cf_turn_6:
     url: 'turns:turn.cloudflare.com:443?transport=tcp'
-    username: 'g06337516541bf5d169ea454bca77456e27a21ec0f60fa122dfcdd9cf617bc62'
-    password: '22044f67705a1453b677001a6cb4df194fc71d0b588480c099ebdf7085daedaa'
+    username: 'g05b4bb0a900128c3d32d5f4efb64c34c6822d9592bb24ddf72211679bf478ce'
+    password: '9c68204782010e2ae6b7ea67564dc31f39399638debfaad07e4ef8369e5b769d'

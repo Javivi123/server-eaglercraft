@@ -554,6 +554,19 @@ function parseChestsYaml(text) {
   return chests;
 }
 
+function parseNerfYaml(text) {
+  const nerfed = {};
+  if (!text) return nerfed;
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.match(/^\s{2}([a-zA-Z0-9_]+):\s*(true|false)/i);
+    if (m) {
+      nerfed[m[1].toLowerCase()] = m[2].toLowerCase() === 'true';
+    }
+  }
+  return nerfed;
+}
+
 function getServerState() {
   const bannedPath = path.join(SERVER_DIR, 'server', 'banned-players.json');
   const usercachePath = path.join(SERVER_DIR, 'server', 'usercache.json');
@@ -563,6 +576,7 @@ function getServerState() {
   const alliancesPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'alliances.yml');
   const honorPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'honor.yml');
   const chestsPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'chests.yml');
+  const nerfPath = path.join(SERVER_DIR, 'server', 'plugins', 'XaviAdminProtect', 'nerf.yml');
 
   let banned = [];
   try {
@@ -667,7 +681,10 @@ function getServerState() {
   let chests = [];
   try { if (fs.existsSync(chestsPath)) chests = parseChestsYaml(fs.readFileSync(chestsPath, 'utf8')); } catch (e) {}
 
-  return { banned, knownPlayers, logs, chatMessages, rules, warnings, alliances, honor, chests };
+  let nerfed = {};
+  try { if (fs.existsSync(nerfPath)) nerfed = parseNerfYaml(fs.readFileSync(nerfPath, 'utf8')); } catch (e) {}
+
+  return { banned, knownPlayers, logs, chatMessages, rules, warnings, alliances, honor, chests, nerfed };
 }
 
 const HTML_PAGE = `<!DOCTYPE html>
