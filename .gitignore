@@ -20,3 +20,6 @@ session.lock
 *.db-journal
 eaglercraft_skins_cache.db
 bungee/eaglercraft_skins_cache.db
+
+*.bak
+**/eagcert/

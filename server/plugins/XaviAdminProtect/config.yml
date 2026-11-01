@@ -1,10 +1,10 @@
 owner: Xavi
-auto-shutdown-idle-minutes: 10
+auto-shutdown-idle-minutes: 0
 house-protection-enabled: true
 auto-ban-on-grief: true
 protect-house-chests: true
 anti-explosion-destroy: true
-anti-fire-spread: true
+anti-fire-spread: false
 global-build-lock: false
 trusted-friends: []
 public-blocks: {}
@@ -12,7 +12,9 @@ keep-inventory: false
 zones:
   CasaPrincipal:
     world: world
-    x: -273
-    y: 78
-    z: -6
-    radius: 12
+    minX: -281
+    maxX: -264
+    minY: 73
+    maxY: 85
+    minZ: -11
+    maxZ: 0

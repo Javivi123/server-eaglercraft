@@ -929,7 +929,17 @@ const HTML_PAGE = `<!DOCTYPE html>
     <h2>🏠 Reglas de tu Casa y Auto-Ban</h2>
     
     <!-- Auto-Ban Toggle -->
-    <div class="rule-box">
+        <div class="rule-box" style="border-left: 3px solid #10b981;">
+      <div>
+        <div class="rule-desc-title">🎙️ Sistema de Voz (Pulsar 'V' o Micro Abierto)</div>
+        <div class="rule-desc-sub">Los jugadores pueden pulsar <b>Alt + V</b> dentro del juego o hacer clic en el botón superior derecho <b>[🎙️/🟢]</b> para alternar entre 'Pulsar V' y 'Micro Siempre Abierto'. Proximidad ampliada a <b>64m</b> (hasta 96m).</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="pill-state pill-on" style="background:#10b981; color:#fff;">64m ACTIVO</span>
+      </div>
+    </div>
+
+<div class="rule-box">
       <div>
         <div class="rule-desc-title">🚨 Auto-Ban al Romper tu Casa</div>
         <div class="rule-desc-sub">Si un amigo intenta romper un bloque de tu casa, el bloque NO se rompe y el servidor lo banea al instante.</div>

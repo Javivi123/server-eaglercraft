@@ -112,3 +112,12 @@ commands:
   nerf:
     description: Activa o desactiva el nerfeo de jugadores (vida al 50%, inventario al 50%, etc)
     aliases: [nerfeo, setnerf, nerfear]
+  scancasa:
+    description: Escanea la nueva casa de Xavi y ajusta el perimetro exacto
+    aliases: [ajustarcasa, escanearcasa]
+  spawnjosefa:
+    description: Restaura o invoca a Josefa con su nombre flotante
+    aliases: [josefa]
+  online:
+    description: Muestra los jugadores que estan conectados al servidor
+    aliases: [jugadores, quien, conectados, onlineplayers]

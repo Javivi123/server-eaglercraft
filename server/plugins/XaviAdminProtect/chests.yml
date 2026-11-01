@@ -13,20 +13,6 @@ chests:
     z: -48
     owner: taetti
     claimedDate: 2026-10-29 12:54
-  world_-274_78_-5:
-    world: world
-    x: -274
-    y: 78
-    z: -5
-    owner: Xavi
-    claimedDate: 2026-10-29 13:54
-  world_-275_78_-5:
-    world: world
-    x: -275
-    y: 78
-    z: -5
-    owner: Xavi
-    claimedDate: 2026-10-29 13:54
   world_-360_96_-48:
     world: world
     x: -360
@@ -41,20 +27,6 @@ chests:
     z: -48
     owner: eL_guille
     claimedDate: 2026-10-29 13:56
-  world_-275_78_-7:
-    world: world
-    x: -275
-    y: 78
-    z: -7
-    owner: Xavi
-    claimedDate: 2026-10-29 13:57
-  world_-274_78_-7:
-    world: world
-    x: -274
-    y: 78
-    z: -7
-    owner: Xavi
-    claimedDate: 2026-10-29 13:57
   world_-255_65_-13:
     world: world
     x: -255
@@ -90,3 +62,143 @@ chests:
     z: -44
     owner: Leo
     claimedDate: 2026-10-29 22:09
+  world_-225_64_101:
+    world: world
+    x: -225
+    y: 64
+    z: 101
+    owner: Piccino
+    claimedDate: 2026-10-30 22:46
+  world_-225_64_100:
+    world: world
+    x: -225
+    y: 64
+    z: 100
+    owner: Piccino
+    claimedDate: 2026-10-30 22:46
+  world_-370_61_-35:
+    world: world
+    x: -370
+    y: 61
+    z: -35
+    owner: taetti
+    claimedDate: 2026-10-31 13:07
+  world_-252_61_-25:
+    world: world
+    x: -252
+    y: 61
+    z: -25
+    owner: P_Diddy
+    claimedDate: 2026-10-31 14:02
+  world_-482_84_-146:
+    world: world
+    x: -482
+    y: 84
+    z: -146
+    owner: becanyahu
+    claimedDate: 2026-10-31 14:40
+  world_-482_84_-147:
+    world: world
+    x: -482
+    y: 84
+    z: -147
+    owner: becanyahu
+    claimedDate: 2026-10-31 14:40
+  world_-225_65_100:
+    world: world
+    x: -225
+    y: 65
+    z: 100
+    owner: Piccino
+    claimedDate: 2026-11-01 14:24
+  world_-225_65_101:
+    world: world
+    x: -225
+    y: 65
+    z: 101
+    owner: Piccino
+    claimedDate: 2026-11-01 14:24
+  world_-278_76_-9:
+    world: world
+    x: -278
+    y: 76
+    z: -9
+    owner: Xavi
+    claimedDate: 2026-11-01 15:24
+  world_-279_76_-9:
+    world: world
+    x: -279
+    y: 76
+    z: -9
+    owner: Xavi
+    claimedDate: 2026-11-01 15:24
+  world_-277_76_-2:
+    world: world
+    x: -277
+    y: 76
+    z: -2
+    owner: Xavi
+    claimedDate: 2026-11-01 15:33
+  world_-278_76_-2:
+    world: world
+    x: -278
+    y: 76
+    z: -2
+    owner: Xavi
+    claimedDate: 2026-11-01 15:33
+  world_-787_35_-140:
+    world: world
+    x: -787
+    y: 35
+    z: -140
+    owner: Xavi
+    claimedDate: 2026-11-01 18:40
+  world_-787_41_-193:
+    world: world
+    x: -787
+    y: 41
+    z: -193
+    owner: taetti
+    claimedDate: 2026-11-01 18:42
+  world_-799_47_-187:
+    world: world
+    x: -799
+    y: 47
+    z: -187
+    owner: Piccino
+    claimedDate: 2026-11-01 18:43
+  world_-803_42_-196:
+    world: world
+    x: -803
+    y: 42
+    z: -196
+    owner: Piccino
+    claimedDate: 2026-11-01 18:43
+  world_-829_43_-165:
+    world: world
+    x: -829
+    y: 43
+    z: -165
+    owner: Xavi
+    claimedDate: 2026-11-01 18:44
+  world_-752_27_-182:
+    world: world
+    x: -752
+    y: 27
+    z: -182
+    owner: Xavi
+    claimedDate: 2026-11-01 18:47
+  world_-780_41_-167:
+    world: world
+    x: -780
+    y: 41
+    z: -167
+    owner: taetti
+    claimedDate: 2026-11-01 18:52
+  world_-780_41_-160:
+    world: world
+    x: -780
+    y: 41
+    z: -160
+    owner: taetti
+    claimedDate: 2026-11-01 18:53

@@ -4,5 +4,11 @@
     "name": "Xavi",
     "level": 4,
     "bypassesPlayerLimit": false
+  },
+  {
+    "uuid": "f2cf0e1d-c8bf-3e9e-99e9-a0c3d71e0c23",
+    "name": "Radio_xavi",
+    "level": 4,
+    "bypassesPlayerLimit": false
   }
 ]

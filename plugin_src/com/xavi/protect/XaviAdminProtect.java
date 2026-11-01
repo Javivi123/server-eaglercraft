@@ -31,6 +31,13 @@ import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.entity.Monster;
+import org.bukkit.DyeColor;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Sheep;
+import org.bukkit.entity.LeashHitch;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -79,10 +86,27 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public static class Zone {
         public String name;
         public String world;
-        public int x;
-        public int y;
-        public int z;
-        public int radius;
+        public int minX, maxX;
+        public int minY, maxY;
+        public int minZ, maxZ;
+        public int x, y, z, radius;
+        public boolean isBox;
+
+        public Zone(String name, String world, int minX, int maxX, int minY, int maxY, int minZ, int maxZ) {
+            this.name = name;
+            this.world = world;
+            this.minX = Math.min(minX, maxX);
+            this.maxX = Math.max(minX, maxX);
+            this.minY = Math.min(minY, maxY);
+            this.maxY = Math.max(minY, maxY);
+            this.minZ = Math.min(minZ, maxZ);
+            this.maxZ = Math.max(minZ, maxZ);
+            this.x = (this.minX + this.maxX) / 2;
+            this.y = (this.minY + this.maxY) / 2;
+            this.z = (this.minZ + this.maxZ) / 2;
+            this.radius = Math.max((this.maxX - this.minX) / 2, (this.maxZ - this.minZ) / 2);
+            this.isBox = true;
+        }
 
         public Zone(String name, String world, int x, int y, int z, int radius) {
             this.name = name;
@@ -91,13 +115,26 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             this.y = y;
             this.z = z;
             this.radius = radius;
+            this.minX = x - radius;
+            this.maxX = x + radius;
+            this.minY = 0;
+            this.maxY = 256;
+            this.minZ = z - radius;
+            this.maxZ = z + radius;
+            this.isBox = false;
         }
 
         public boolean contains(Location loc) {
             if (loc == null || loc.getWorld() == null) return false;
             if (!loc.getWorld().getName().equalsIgnoreCase(this.world)) return false;
-            int dx = Math.abs(loc.getBlockX() - this.x);
-            int dz = Math.abs(loc.getBlockZ() - this.z);
+            int bx = loc.getBlockX();
+            int by = loc.getBlockY();
+            int bz = loc.getBlockZ();
+            if (isBox) {
+                return bx >= minX && bx <= maxX && by >= minY && by <= maxY && bz >= minZ && bz <= maxZ;
+            }
+            int dx = Math.abs(bx - this.x);
+            int dz = Math.abs(bz - this.z);
             return dx <= this.radius && dz <= this.radius;
         }
     }
@@ -280,11 +317,21 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         if (zSec != null) {
             for (String key : zSec.getKeys(false)) {
                 String w = zSec.getString(key + ".world", "world");
-                int x = zSec.getInt(key + ".x", -276);
-                int y = zSec.getInt(key + ".y", 67);
-                int z = zSec.getInt(key + ".z", -10);
-                int r = zSec.getInt(key + ".radius", 30);
-                zones.add(new Zone(key, w, x, y, z, r));
+                if (zSec.contains(key + ".minX")) {
+                    int minX = zSec.getInt(key + ".minX");
+                    int maxX = zSec.getInt(key + ".maxX");
+                    int minY = zSec.getInt(key + ".minY", 0);
+                    int maxY = zSec.getInt(key + ".maxY", 256);
+                    int minZ = zSec.getInt(key + ".minZ");
+                    int maxZ = zSec.getInt(key + ".maxZ");
+                    zones.add(new Zone(key, w, minX, maxX, minY, maxY, minZ, maxZ));
+                } else {
+                    int x = zSec.getInt(key + ".x", -276);
+                    int y = zSec.getInt(key + ".y", 67);
+                    int z = zSec.getInt(key + ".z", -10);
+                    int r = zSec.getInt(key + ".radius", 30);
+                    zones.add(new Zone(key, w, x, y, z, r));
+                }
             }
         }
 
@@ -329,10 +376,19 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         for (Zone z : zones) {
             String path = "zones." + z.name;
             cfg.set(path + ".world", z.world);
-            cfg.set(path + ".x", z.x);
-            cfg.set(path + ".y", z.y);
-            cfg.set(path + ".z", z.z);
-            cfg.set(path + ".radius", z.radius);
+            if (z.isBox) {
+                cfg.set(path + ".minX", z.minX);
+                cfg.set(path + ".maxX", z.maxX);
+                cfg.set(path + ".minY", z.minY);
+                cfg.set(path + ".maxY", z.maxY);
+                cfg.set(path + ".minZ", z.minZ);
+                cfg.set(path + ".maxZ", z.maxZ);
+            } else {
+                cfg.set(path + ".x", z.x);
+                cfg.set(path + ".y", z.y);
+                cfg.set(path + ".z", z.z);
+                cfg.set(path + ".radius", z.radius);
+            }
         }
         saveConfig();
     }
@@ -455,6 +511,48 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void sendOnlinePlayersList(CommandSender sender) {
+        if (sender == null) return;
+        Player p = (sender instanceof Player) ? (Player) sender : null;
+
+        List<String> playerList = new ArrayList<String>();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            String alTag = "";
+            if (allianceManager != null) {
+                AllianceManager.Alliance al = allianceManager.getAlliance(online.getName());
+                if (al != null) {
+                    alTag = ChatColor.AQUA + "[" + al.name + "] ";
+                }
+            }
+
+            String nameFormatted;
+            if (online.getName().equalsIgnoreCase(ownerName)) {
+                nameFormatted = ChatColor.GOLD + "" + ChatColor.BOLD + "★ " + online.getName() + ChatColor.RESET;
+            } else if (p != null && online.getName().equalsIgnoreCase(p.getName())) {
+                nameFormatted = ChatColor.GREEN + online.getName() + ChatColor.GRAY + " (tú)" + ChatColor.RESET;
+            } else {
+                nameFormatted = ChatColor.YELLOW + online.getName() + ChatColor.RESET;
+            }
+            playerList.add(alTag + nameFormatted);
+        }
+
+        int total = Bukkit.getOnlinePlayers().size();
+        sender.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "--------------------------------------------------");
+        if (total <= 1) {
+            sender.sendMessage(ChatColor.GOLD + "👥 " + ChatColor.YELLOW + ChatColor.BOLD + "Jugadores conectados ahora mismo (" + ChatColor.WHITE + "1" + ChatColor.YELLOW + ChatColor.BOLD + "):");
+            sender.sendMessage(ChatColor.GRAY + "  » Solo estás tú en línea " + ChatColor.DARK_GRAY + "(" + ChatColor.RED + "no hay nadie más conectado" + ChatColor.DARK_GRAY + ").");
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < playerList.size(); i++) {
+                if (i > 0) sb.append(ChatColor.GRAY + ", ");
+                sb.append(playerList.get(i));
+            }
+            sender.sendMessage(ChatColor.GOLD + "👥 " + ChatColor.YELLOW + ChatColor.BOLD + "Jugadores conectados ahora mismo (" + ChatColor.GREEN + total + ChatColor.YELLOW + ChatColor.BOLD + "):");
+            sender.sendMessage(ChatColor.WHITE + "  » " + sb.toString());
+        }
+        sender.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "--------------------------------------------------");
+    }
+
     public void onPlayerJoin(PlayerJoinEvent event) {
         idleSeconds = 0;
         final Player p = event.getPlayer();
@@ -495,6 +593,16 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 }, 20L);
             }
         }
+
+        // Notificar siempre de jugadores en línea al entrar al servidor
+        Bukkit.getScheduler().runTaskLater(this, new Runnable() {
+            @Override
+            public void run() {
+                if (p.isOnline()) {
+                    sendOnlinePlayersList(p);
+                }
+            }
+        }, 15L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -596,12 +704,45 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             Player p = (Player) event.getEntity();
             if (godPlayers.contains(p.getName().toLowerCase())) {
                 event.setCancelled(true);
+                return;
+            }
+        }
+        if (isJosefa(event.getEntity())) {
+            // Josefa es inmune a peligros ambientales (fuego, lava, caida, asfixia, cactus, explosiones)
+            if (event.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK
+                    && event.getCause() != EntityDamageEvent.DamageCause.PROJECTILE) {
+                event.setCancelled(true);
             }
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (isJosefa(event.getEntity())) {
+            Player attacker = null;
+            if (event.getDamager() instanceof Player) {
+                attacker = (Player) event.getDamager();
+            } else if (event.getDamager() instanceof Projectile) {
+                Projectile proj = (Projectile) event.getDamager();
+                if (proj.getShooter() instanceof Player) {
+                    attacker = (Player) proj.getShooter();
+                }
+            }
+
+            if (attacker != null) {
+                if (attacker.getName().equalsIgnoreCase(ownerName)) {
+                    // Xavi si puede interactuar o esquilar a su mascota
+                    return;
+                }
+                event.setCancelled(true);
+                banPlayer(attacker.getName(), "Atacar o intentar matar a la mascota de Xavi (Josefa)");
+                return;
+            } else {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
         Player attacker = null;
         if (event.getDamager() instanceof Player) {
             attacker = (Player) event.getDamager();
@@ -681,6 +822,22 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDeath(EntityDeathEvent event) {
+        if (isJosefa(event.getEntity())) {
+            Player killer = event.getEntity().getKiller();
+            if (killer != null && !killer.getName().equalsIgnoreCase(ownerName)) {
+                banPlayer(killer.getName(), "Matar a la mascota de Xavi (Josefa)");
+            }
+            // Auto-reaparición de Josefa para que Xavi nunca la pierda
+            final World w = event.getEntity().getWorld();
+            Bukkit.getScheduler().runTaskLater(this, new Runnable() {
+                @Override
+                public void run() {
+                    Zone house = zones.isEmpty() ? null : zones.get(0);
+                    setupJosefa(w, house, null, null);
+                }
+            }, 30L);
+        }
+
         if (event.getEntity() instanceof Monster) {
             Player killer = event.getEntity().getKiller();
             if (killer != null && honorManager != null) {
@@ -1224,9 +1381,312 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         }
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        if (isJosefa(event.getRightClicked())) {
+            Player p = event.getPlayer();
+            if (!p.getName().equalsIgnoreCase(ownerName) && !isTrusted(p)) {
+                event.setCancelled(true);
+                p.sendMessage(ChatColor.RED + "¡No toques a Josefa! Es la mascota sagrada de Xavi.");
+            }
+        }
+    }
+
+    public boolean isJosefa(Entity e) {
+        if (e == null) return false;
+        if (e instanceof Sheep) {
+            Sheep s = (Sheep) e;
+            String name = s.getCustomName();
+            if (name != null && ChatColor.stripColor(name).equalsIgnoreCase("Josefa")) {
+                return true;
+            }
+            if (getZoneAt(s.getLocation()) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void banPlayer(String playerName, String reason) {
+        if (playerName.equalsIgnoreCase(ownerName)) return;
+        Bukkit.getBanList(BanList.Type.NAME).addBan(playerName, reason, null, "XaviAdminProtect");
+        final Player online = Bukkit.getPlayerExact(playerName);
+        if (online != null) {
+            Bukkit.getScheduler().runTask(this, new Runnable() {
+                @Override
+                public void run() {
+                    online.kickPlayer(ChatColor.DARK_RED + "" + ChatColor.BOLD + "¡HAS SIDO BANEADO PERMANENTEMENTE DEL SERVIDOR!\\n\\n"
+                            + ChatColor.YELLOW + "Motivo: " + ChatColor.WHITE + reason);
+                }
+            });
+        }
+        Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "⛔ [AUTO-BAN] "
+                + ChatColor.YELLOW + playerName + ChatColor.RED + " ha sido BANEADO PERMANENTEMENTE por " + reason + "!");
+        getLogger().info("[AUTO-BAN] Jugador " + playerName + " baneado por " + reason);
+    }
+
+    private boolean isHouseMaterial(Material m) {
+        if (m == null || m == Material.AIR) return false;
+        String name = m.name();
+        return name.contains("WOOD") || name.contains("LOG") || name.contains("PLANK")
+                || name.contains("STEP") || name.contains("STAIRS")
+                || name.contains("GLASS") || name.contains("DOOR") || name.contains("TRAP")
+                || name.contains("FENCE") || name.contains("GATE")
+                || name.contains("BRICK") || name.contains("COBBLE") || name.contains("SMOOTH")
+                || name.contains("CHEST") || name.contains("FURNACE") || name.contains("WORKBENCH")
+                || name.contains("CARPET") || name.contains("TORCH") || name.contains("BED")
+                || name.contains("LADDER") || name.contains("SIGN") || name.contains("WOOL")
+                || name.contains("ANVIL") || name.contains("BOOKSHELF") || name.contains("QUARTZ")
+                || name.contains("IRON_BARS") || name.contains("CLAY");
+    }
+
+    private boolean isFenceMaterial(Material m) {
+        if (m == null) return false;
+        String name = m.name();
+        return name.contains("FENCE") && !name.contains("GATE");
+    }
+
+    public void scanAndProtectHouse(CommandSender sender) {
+        World w = Bukkit.getWorld("world");
+        if (w == null) {
+            sender.sendMessage(ChatColor.RED + "Error: Mundo 'world' no encontrado.");
+            return;
+        }
+
+        // Core house seed positions (Xavi's chests and key house coordinates)
+        int[][] seedPoints = {
+            {-278, 76, -9}, {-279, 76, -9},
+            {-277, 76, -2}, {-278, 76, -2},
+            {-268, 80, -8}, {-270, 77, -3},
+            {-282, 77, -5}
+        };
+
+        int coreCenterX = -275;
+        int coreCenterZ = -5;
+
+        java.util.Queue<Block> queue = new java.util.LinkedList<Block>();
+        java.util.Set<String> visited = new java.util.HashSet<String>();
+
+        for (int[] pt : seedPoints) {
+            Block b = w.getBlockAt(pt[0], pt[1], pt[2]);
+            String key = pt[0] + "," + pt[1] + "," + pt[2];
+            if (!visited.contains(key)) {
+                visited.add(key);
+                queue.add(b);
+            }
+        }
+
+        int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
+        int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+        int houseBlockCount = 0;
+        Location bestFence = null;
+
+        // 26 connected neighbor offsets (includes diagonals to bridge stairs/corners/slabs)
+        java.util.List<int[]> neighborDirs = new java.util.ArrayList<int[]>();
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    neighborDirs.add(new int[]{dx, dy, dz});
+                }
+            }
+        }
+
+        while (!queue.isEmpty()) {
+            Block curr = queue.poll();
+            int cx = curr.getX();
+            int cy = curr.getY();
+            int cz = curr.getZ();
+
+            // Distance limit from core center to stay strictly within house bounds
+            int dX = cx - coreCenterX;
+            int dZ = cz - coreCenterZ;
+            if (dX * dX + dZ * dZ > 24 * 24) continue;
+            if (cy < 60 || cy > 105) continue;
+
+            Material m = curr.getType();
+            if (isHouseMaterial(m)) {
+                if (cx < minX) minX = cx;
+                if (cx > maxX) maxX = cx;
+                if (cy < minY) minY = cy;
+                if (cy > maxY) maxY = cy;
+                if (cz < minZ) minZ = cz;
+                if (cz > maxZ) maxZ = cz;
+                houseBlockCount++;
+
+                if (isFenceMaterial(m) && bestFence == null) {
+                    bestFence = curr.getLocation();
+                }
+
+                // Add unvisited neighbor blocks
+                for (int[] dir : neighborDirs) {
+                    int nx = cx + dir[0];
+                    int ny = cy + dir[1];
+                    int nz = cz + dir[2];
+                    String key = nx + "," + ny + "," + nz;
+                    if (!visited.contains(key)) {
+                        visited.add(key);
+                        Block nb = w.getBlockAt(nx, ny, nz);
+                        Material nMat = nb.getType();
+                        // Only flood fill connected house materials
+                        if (isHouseMaterial(nMat)) {
+                            queue.add(nb);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (houseBlockCount < 10) {
+            sender.sendMessage(ChatColor.RED + "No se encontraron suficientes bloques de casa para delimitar (detectados: " + houseBlockCount + ").");
+            return;
+        }
+
+        // Bounding box strictly encompassing the connected house structure
+        Zone main = new Zone("CasaPrincipal", w.getName(), minX, maxX, minY, maxY, minZ, maxZ);
+        zones.clear();
+        zones.add(main);
+        saveSettings();
+
+        sender.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "✔ [Casa Protegida Actualizada]");
+        sender.sendMessage(ChatColor.YELLOW + "  Perímetro exacto de la nueva casa:");
+        sender.sendMessage(ChatColor.AQUA + "  X: " + minX + " a " + maxX + " (" + (maxX - minX + 1) + " bloques de ancho)");
+        sender.sendMessage(ChatColor.AQUA + "  Y: " + minY + " a " + maxY + " (" + (maxY - minY + 1) + " bloques de alto)");
+        sender.sendMessage(ChatColor.AQUA + "  Z: " + minZ + " a " + maxZ + " (" + (maxZ - minZ + 1) + " bloques de largo)");
+        sender.sendMessage(ChatColor.GREEN + "  Total bloques estructurales conectados: " + houseBlockCount + ". ¡Ningún bloque exterior queda protegido!");
+
+        setupJosefa(w, main, bestFence, sender);
+    }
+
+    public void setupJosefa(World w, Zone house, Location fenceLoc, CommandSender sender) {
+        Sheep josefa = null;
+
+        for (Entity e : w.getEntities()) {
+            if (e instanceof Sheep) {
+                Sheep s = (Sheep) e;
+                if (isJosefa(s)) {
+                    josefa = s;
+                    break;
+                }
+            }
+        }
+
+        if (josefa == null && house != null) {
+            for (Entity e : w.getEntities()) {
+                if (e instanceof Sheep) {
+                    Sheep s = (Sheep) e;
+                    if (house.contains(s.getLocation())) {
+                        josefa = s;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Search around Josefa or house for the closest fence if not provided
+        if (fenceLoc == null) {
+            Location center = (josefa != null ? josefa.getLocation() : (house != null ? new Location(w, (house.minX + house.maxX)/2.0, (house.minY + house.maxY)/2.0, (house.minZ + house.maxZ)/2.0) : new Location(w, -270, 77, -3)));
+            int searchR = 8;
+            double minDist = Double.MAX_VALUE;
+            for (int x = center.getBlockX() - searchR; x <= center.getBlockX() + searchR; x++) {
+                for (int y = Math.max(60, center.getBlockY() - 3); y <= Math.min(100, center.getBlockY() + 4); y++) {
+                    for (int z = center.getBlockZ() - searchR; z <= center.getBlockZ() + searchR; z++) {
+                        Block b = w.getBlockAt(x, y, z);
+                        if (isFenceMaterial(b.getType())) {
+                            double dist = b.getLocation().distanceSquared(center);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                fenceLoc = b.getLocation();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (josefa != null) {
+            josefa.setCustomName(ChatColor.GREEN + "" + ChatColor.BOLD + "Josefa");
+            josefa.setCustomNameVisible(true);
+            josefa.setRemoveWhenFarAway(false);
+            josefa.setAgeLock(true);
+            josefa.setHealth(josefa.getMaxHealth());
+
+            if (fenceLoc != null && !josefa.isLeashed()) {
+                attachToFence(josefa, fenceLoc);
+            }
+            if (sender != null) {
+                sender.sendMessage(ChatColor.GREEN + "✔ [Josefa] Mascota Josefa configurada con nombre verde flotante en X=" + josefa.getLocation().getBlockX() + ", Y=" + josefa.getLocation().getBlockY() + ", Z=" + josefa.getLocation().getBlockZ() + (josefa.isLeashed() ? " (Atada a su valla)" : (fenceLoc != null ? " (Atada a valla)" : "")));
+            }
+        } else {
+            Location spawnLoc;
+            if (fenceLoc != null) {
+                spawnLoc = fenceLoc.clone().add(0.5, 0.2, 0.5);
+                if (spawnLoc.getBlock().getType().isSolid()) {
+                    spawnLoc.add(0, 1, 0);
+                }
+            } else if (house != null) {
+                spawnLoc = new Location(w, (house.minX + house.maxX)/2.0, house.minY + 1.0, (house.minZ + house.maxZ)/2.0);
+            } else {
+                spawnLoc = new Location(w, -270.5, 77.0, -3.5);
+            }
+
+            Sheep newSheep = (Sheep) w.spawnEntity(spawnLoc, EntityType.SHEEP);
+            newSheep.setColor(DyeColor.WHITE);
+            newSheep.setCustomName(ChatColor.GREEN + "" + ChatColor.BOLD + "Josefa");
+            newSheep.setCustomNameVisible(true);
+            newSheep.setRemoveWhenFarAway(false);
+            newSheep.setAgeLock(true);
+
+            if (fenceLoc != null) {
+                attachToFence(newSheep, fenceLoc);
+            }
+            if (sender != null) {
+                sender.sendMessage(ChatColor.GREEN + "✔ [Josefa] ¡Josefa ha sido invocada con su nombre verde flotante y atada a su valla!");
+            }
+        }
+    }
+
+    private void attachToFence(Sheep sheep, Location fenceLoc) {
+        try {
+            LeashHitch knot = null;
+            for (Entity e : fenceLoc.getWorld().getNearbyEntities(fenceLoc, 1.5, 1.5, 1.5)) {
+                if (e instanceof LeashHitch) {
+                    knot = (LeashHitch) e;
+                    break;
+                }
+            }
+            if (knot == null) {
+                knot = fenceLoc.getWorld().spawn(fenceLoc, LeashHitch.class);
+            }
+            if (knot != null) {
+                sheep.setLeashHolder(knot);
+            }
+        } catch (Exception e) {
+            getLogger().warning("[Josefa] No se pudo atar a la valla automáticamente: " + e.getMessage());
+        }
+    }
+
+        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         String c = cmd.getName().toLowerCase();
+
+        if (c.equals("scancasa") || c.equals("ajustarcasa") || c.equals("escanearcasa")) {
+            scanAndProtectHouse(sender);
+            return true;
+        }
+
+        if (c.equals("online") || c.equals("jugadores") || c.equals("quien") || c.equals("conectados") || c.equals("onlineplayers")) {
+            sendOnlinePlayersList(sender);
+            return true;
+        }
+
+        if (c.equals("spawnjosefa") || c.equals("josefa")) {
+            World w = Bukkit.getWorld("world");
+            Zone house = zones.isEmpty() ? null : zones.get(0);
+            setupJosefa(w, house, null, sender);
+            return true;
+        }
+
 
         boolean isPublicCmd = c.equals("unirse") || c.equals("unirme") || c.equals("join") || c.equals("entrar") || c.equals("aceptar")
                 || c.equals("crearclan") || c.equals("crearalianza") || c.equals("clancrear") || c.equals("fundarclan")
@@ -1238,7 +1698,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 || c.equals("donar") || c.equals("giveitem") || c.equals("regalar")
                 || c.equals("forajidos") || c.equals("topforajidos") || c.equals("outlaws") || c.equals("criminales")
                 || c.equals("heroes") || c.equals("topheroes")
-                || c.equals("infocofre") || c.equals("vercofre") || c.equals("cofreinfo");
+                || c.equals("infocofre") || c.equals("vercofre") || c.equals("cofreinfo")
+                || c.equals("online") || c.equals("jugadores") || c.equals("quien") || c.equals("conectados") || c.equals("onlineplayers");
 
         if (!isPublicCmd && !isOwner(sender)) {
             sender.sendMessage(ChatColor.RED + "Solo Xavi o la Consola de Control pueden usar este comando.");
@@ -1477,7 +1938,11 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             sender.sendMessage(ChatColor.YELLOW + "Anti-Explosiones (Creeper/TNT): " + (antiExplosionDestroy ? ChatColor.GREEN + "SI" : ChatColor.RED + "NO"));
             sender.sendMessage(ChatColor.YELLOW + "Amigos con permiso: " + ChatColor.WHITE + trustedFriends.toString());
             for (Zone z : zones) {
-                sender.sendMessage(ChatColor.AQUA + "- " + z.name + ": Centro=(" + z.x + ", " + z.y + ", " + z.z + ") Radio=" + z.radius + " bloques");
+                if (z.isBox) {
+                    sender.sendMessage(ChatColor.AQUA + "- " + z.name + " [Perímetro Exacto]: X=(" + z.minX + ".." + z.maxX + ") Y=(" + z.minY + ".." + z.maxY + ") Z=(" + z.minZ + ".." + z.maxZ + ")");
+                } else {
+                    sender.sendMessage(ChatColor.AQUA + "- " + z.name + ": Centro=(" + z.x + ", " + z.y + ", " + z.z + ") Radio=" + z.radius + " bloques");
+                }
             }
             return true;
         }
