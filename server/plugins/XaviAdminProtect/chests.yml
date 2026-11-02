@@ -48,13 +48,6 @@ chests:
     z: -69
     owner: becanyahu
     claimedDate: 2026-10-29 18:53
-  world_-303_77_11:
-    world: world
-    x: -303
-    y: 77
-    z: 11
-    owner: FRANCO_PRIMO_RIV
-    claimedDate: 2026-10-29 21:52
   world_-366_96_-44:
     world: world
     x: -366
@@ -82,7 +75,7 @@ chests:
     y: 61
     z: -35
     owner: taetti
-    claimedDate: 2026-10-31 13:07
+    claimedDate: 2026-11-02 19:48
   world_-252_61_-25:
     world: world
     x: -252
@@ -244,3 +237,17 @@ chests:
     z: -720
     owner: taetti
     claimedDate: 2026-11-02 19:12
+  world_-311_76_10:
+    world: world
+    x: -311
+    y: 76
+    z: 10
+    owner: FRANCO_PRIMO_RIV
+    claimedDate: 2026-11-02 19:47
+  world_-370_61_-36:
+    world: world
+    x: -370
+    y: 61
+    z: -36
+    owner: taetti
+    claimedDate: 2026-11-02 19:48

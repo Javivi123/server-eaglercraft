@@ -92,6 +92,9 @@ public class PoliceManager {
         public int waypointIndex = 0;
         public int ticksInCurrentSector = 0;
         public int suspicionCooldown = 0;
+        public Player targetPlayer = null;
+        public int pursuitTicks = 0;
+        public long lastBatonStrike = 0L;
 
         public PoliceOfficer(String id, String name, String rank, String assignment, Color armorColor, Material helmetMaterial, String defaultSectorId) {
             this.id = id;
@@ -510,11 +513,6 @@ public class PoliceManager {
                         continue;
                     }
 
-                    // Los policías son pacíficos y nunca toman de objetivo a inocentes
-                    if (off.entity instanceof Creature) {
-                        ((Creature) off.entity).setTarget(null);
-                    }
-
                     // Regeneración pasiva de salud (2 HP por ciclo hasta 60 HP)
                     if (off.entity.getHealth() < off.entity.getMaxHealth()) {
                         off.entity.setHealth(Math.min(off.entity.getMaxHealth(), off.entity.getHealth() + 2.0));
@@ -522,6 +520,39 @@ public class PoliceManager {
 
                     off.ticksInCurrentSector += 4;
                     if (off.suspicionCooldown > 0) off.suspicionCooldown -= 4;
+
+                    // Persecución activa de delincuentes/agresores
+                    if (off.pursuitTicks > 0) {
+                        off.pursuitTicks -= 4;
+                        if (off.targetPlayer != null && off.targetPlayer.isOnline() && off.targetPlayer.getWorld().equals(off.entity.getWorld())) {
+                            double dist = off.entity.getLocation().distance(off.targetPlayer.getLocation());
+                            if (dist > 35.0) {
+                                off.targetPlayer = null;
+                                off.pursuitTicks = 0;
+                            } else {
+                                try {
+                                    if (off.entity instanceof CraftCreature) {
+                                        ((CraftCreature) off.entity).getHandle().getNavigation().a(
+                                                off.targetPlayer.getLocation().getX(),
+                                                off.targetPlayer.getLocation().getY(),
+                                                off.targetPlayer.getLocation().getZ(), 1.70);
+                                    }
+                                } catch (Exception ignored) {}
+                                if (dist <= 3.5) {
+                                    deliverBatonStrike(off, off.targetPlayer, "¡Alto a la autoridad! Mantén la distancia.");
+                                }
+                                continue;
+                            }
+                        } else {
+                            off.targetPlayer = null;
+                            off.pursuitTicks = 0;
+                        }
+                    }
+
+                    // Con ciudadanos inocentes nunca toman objetivo hostil
+                    if (off.entity instanceof Creature) {
+                        ((Creature) off.entity).setTarget(null);
+                    }
 
                     patrolOfficerStep(off);
                 }
@@ -644,6 +675,48 @@ public class PoliceManager {
         return safe;
     }
 
+    public void deliverBatonStrike(PoliceOfficer off, Player target, String reason) {
+        if (off == null || !off.isAlive() || target == null || !target.isOnline()) return;
+        if (target.getName().equalsIgnoreCase(plugin.getOwnerName())) return;
+
+        long now = System.currentTimeMillis();
+        if (now - off.lastBatonStrike < 1200L) return; // Cooldown mínimo entre porrazos
+        off.lastBatonStrike = now;
+
+        // Girar hacia el sospechoso
+        Vector toTarget = target.getLocation().toVector().subtract(off.entity.getLocation().toVector());
+        Location lookLoc = off.entity.getLocation().setDirection(toTarget);
+        off.entity.teleport(lookLoc);
+
+        // Sonidos policiales de contención
+        Location tLoc = target.getLocation();
+        tLoc.getWorld().playSound(tLoc, Sound.IRONGOLEM_HIT, 1.2f, 0.9f);
+        tLoc.getWorld().playSound(tLoc, Sound.ZOMBIE_WOOD, 1.0f, 1.5f);
+
+        // Regla no letal: si tiene <= 4.0 HP (2 corazones), no dañarlo más, solo neutralizar
+        if (target.getHealth() <= 4.0) {
+            target.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Quedas neutralizado y bajo custodia policial! No te resistas más.");
+            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 120, 2));
+            return;
+        }
+
+        // Empujón de retroceso (pushback)
+        Vector push = target.getLocation().toVector().subtract(off.entity.getLocation().toVector()).setY(0);
+        if (push.lengthSquared() > 0.01) {
+            push.normalize().multiply(0.85).setY(0.28);
+            target.setVelocity(push);
+        }
+
+        // Daño controlado de porra (no letal)
+        target.damage(3.0, off.entity);
+
+        // Efectos de aturdimiento y control (taser / porrazo)
+        target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 1)); // Slowness II por 4s
+        target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 20, 0)); // Aturdimiento visual de 1s
+
+        target.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.RED + "¡PORRAZO DE CONTENCIÓN! " + ChatColor.YELLOW + reason);
+    }
+
     public void handleAttackOnPolice(Entity victimEntity, Player attacker) {
         PoliceOfficer off = getOfficerByEntity(victimEntity);
         if (off == null) {
@@ -664,7 +737,7 @@ public class PoliceManager {
         boolean sawAttacker = off.canSee(attacker.getEyeLocation());
 
         if (!sawAttacker) {
-            // Golpe por la espalda en sigilo
+            // Golpe por la espalda en sigilo (única forma de librarse del policía durante la sesión)
             attacker.sendMessage(ChatColor.DARK_GRAY + "🗡 [Sigilo] Has golpeado al " + off.name + " por la espalda sin que te vea. No se ha enterado de quién fue.");
             return;
         }
@@ -682,24 +755,26 @@ public class PoliceManager {
         off.entity.teleport(faceLoc);
 
         if (hits == 1) {
-            // Primer golpe: Totalmente comprensivo y tolerante (posible error de clic)
-            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Cuidado con esa herramienta, " + attacker.getName() + "! No pasa nada por un descuido, pero ten más ojo.");
+            // Primer golpe: Totalmente comprensivo y tolerante (posible error de clic o accidente de trabajo)
+            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Cuidado con esa herramienta, " + attacker.getName() + "! Un golpe más a la autoridad y usaré la porra de reglamento.");
             attacker.playSound(attacker.getLocation(), Sound.NOTE_PLING, 1.0f, 1.6f);
             return;
         }
 
         if (hits == 2) {
-            // Segundo golpe cercano: Aviso preventivo amable pero firme
-            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "Por favor " + attacker.getName() + ", mantén la distancia con los agentes en servicio.");
-            attacker.playSound(attacker.getLocation(), Sound.NOTE_PLING, 1.0f, 1.2f);
+            // Segundo golpe: Punto medio - respuesta física con la porra y advertencia firme
+            off.targetPlayer = attacker;
+            off.pursuitTicks = 8;
+            deliverBatonStrike(off, attacker, "¡Te advertí que no agredieras a la autoridad! ¡Atrás y mantén las distancias!");
             return;
         }
 
-        // A partir de 3 golpes continuados: se considera agresión reiterada
-        off.entity.getWorld().playSound(off.entity.getLocation(), Sound.NOTE_PLING, 1.5f, 2.0f);
-        attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 0)); // Solo 3 segundos leves
+        // A partir de 3 golpes continuados: se considera agresión reiterada flagrante
+        off.targetPlayer = attacker;
+        off.pursuitTicks = 16;
+        deliverBatonStrike(off, attacker, "¡Agresión reiterada a la autoridad! Quedas neutralizado.");
 
-        Bukkit.broadcastMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Atención! " + attacker.getName() + " ha golpeado reiteradamente a un agente.");
+        Bukkit.broadcastMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.RED + "¡Atención! " + attacker.getName() + " ha sido neutralizado por agresión reiterada a un agente.");
 
         applyPoliceSanction(off, attacker, "Golpear reiteradamente a un agente");
     }
@@ -770,6 +845,35 @@ public class PoliceManager {
         Bukkit.broadcastMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + witnessingOfficer.name + ": " + ChatColor.RED + "¡ALTO EN NOMBRE DE LA LEY, " + ChatColor.YELLOW + culprit.getName().toUpperCase() + ChatColor.RED + "!");
         Bukkit.broadcastMessage(ChatColor.YELLOW + "  Infracción presenciada en " + ChatColor.AQUA + locDesc + ChatColor.YELLOW + ": " + ChatColor.WHITE + crimeTitle + " (" + description + ")");
         Bukkit.broadcastMessage(ChatColor.DARK_BLUE + "══════════════════════════════════════════════════");
+
+        // Actuación física inmediata (punto medio correcto: intervención activa)
+        final PoliceOfficer cop = witnessingOfficer;
+        cop.targetPlayer = culprit;
+        cop.pursuitTicks = 16; // 8 segundos de persecución/vigilancia activa sobre el sospechoso
+
+        try {
+            if (cop.entity instanceof CraftCreature) {
+                ((CraftCreature) cop.entity).getHandle().getNavigation().a(culprit.getLocation().getX(), culprit.getLocation().getY(), culprit.getLocation().getZ(), 1.75);
+            }
+        } catch (Exception ignored) {}
+
+        final String finalCrime = crimeTitle;
+        double distToCulprit = cop.entity.getLocation().distance(culprit.getLocation());
+        if (distToCulprit <= 3.8) {
+            deliverBatonStrike(cop, culprit, "Infracción presenciada: " + crimeTitle);
+        } else {
+            // Programar intento de porrazo al llegar si está a distancia media
+            Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    if (cop.isAlive() && culprit.isOnline()) {
+                        if (cop.entity.getLocation().distance(culprit.getLocation()) <= 3.8) {
+                            deliverBatonStrike(cop, culprit, "Infracción presenciada: " + finalCrime);
+                        }
+                    }
+                }
+            }, 15L);
+        }
 
         applyPoliceSanction(witnessingOfficer, culprit, crimeTitle);
     }

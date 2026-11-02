@@ -1,6 +1,6 @@
 pets:
   josefa:
-    uuid: ''
+    uuid: f4554f61-c03f-45a5-a35d-6e92eb3888dc
     name: Josefa
     owner: Xavi
     type: SHEEP

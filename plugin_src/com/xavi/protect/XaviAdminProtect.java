@@ -39,6 +39,8 @@ import org.bukkit.entity.Sheep;
 import org.bukkit.entity.LeashHitch;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -794,16 +796,40 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        // Los policías son comprensivos y profesionales: NUNCA dañan físicamente a jugadores ni les atacan
+        // PUNTO MEDIO CORRECTO DE LA POLICÍA:
+        // Si el atacante es un policía, aplica uso de fuerza proporcional y no letal con la porra
         if (policeManager != null) {
+            Entity copDamager = null;
             if (policeManager.isPolice(event.getDamager())) {
-                event.setCancelled(true);
-                return;
-            }
-            if (event.getDamager() instanceof Projectile) {
+                copDamager = event.getDamager();
+            } else if (event.getDamager() instanceof Projectile) {
                 Projectile pr = (Projectile) event.getDamager();
                 if (pr.getShooter() instanceof Entity && policeManager.isPolice((Entity) pr.getShooter())) {
-                    event.setCancelled(true);
+                    copDamager = (Entity) pr.getShooter();
+                }
+            }
+
+            if (copDamager != null) {
+                if (event.getEntity() instanceof Player) {
+                    Player victim = (Player) event.getEntity();
+                    // Don Xavi es intocable para la policía
+                    if (victim.getName().equalsIgnoreCase(ownerName)) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                    // REGLA DE NO-LETALIDAD: Si el jugador tiene 4.0 HP o menos (2 corazones), no dañarlo más (no letal)
+                    if (victim.getHealth() <= 4.0) {
+                        event.setCancelled(true);
+                        victim.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + ChatColor.YELLOW + "¡Quedas neutralizado y bajo custodia policial! No te resistas más.");
+                        victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 2));
+                        return;
+                    }
+                    // Porrazo reglamentario: daño no letal moderado de 3.0 HP (1.5 corazones)
+                    event.setDamage(3.0);
+                    return;
+                } else {
+                    // Si ataca a mobs hostiles que amenazan la paz, daño reglamentario
+                    event.setDamage(6.0);
                     return;
                 }
             }
