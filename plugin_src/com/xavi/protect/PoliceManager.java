@@ -502,6 +502,9 @@ public class PoliceManager {
                 // Velocidad serena y realista de patrullaje a pie (0.24D, paso natural sin correr)
                 nms.getAttributeInstance(net.minecraft.server.v1_8_R3.GenericAttributes.MOVEMENT_SPEED).setValue(0.24D);
 
+                // Silenciar por completo al policía para eliminar los gruñidos y gemidos molestos de zombi (Silent: 1b)
+                nms.b(true);
+
                 // Desactivar completamente la agresividad hostil del zombi hacia los jugadores mediante campos estáticos cacheados
                 if (FIELD_TARGET_B != null && FIELD_TARGET_C != null) {
                     ((java.util.List<?>) FIELD_TARGET_B.get(nms.targetSelector)).clear();
@@ -602,6 +605,16 @@ public class PoliceManager {
                     if (off.entity.getHealth() < off.entity.getMaxHealth()) {
                         off.entity.setHealth(Math.min(off.entity.getMaxHealth(), off.entity.getHealth() + 2.0));
                     }
+
+                    // Asegurar que el policía permanezca silenciado en todo momento (sin gruñidos de zombi)
+                    try {
+                        if (off.entity instanceof CraftCreature) {
+                            net.minecraft.server.v1_8_R3.EntityInsentient nms = ((CraftCreature) off.entity).getHandle();
+                            if (!nms.R()) {
+                                nms.b(true);
+                            }
+                        }
+                    } catch (Exception ignored) {}
 
                     off.ticksInCurrentSector += 4;
                     if (off.suspicionCooldown > 0) off.suspicionCooldown -= 4;

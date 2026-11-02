@@ -67,6 +67,12 @@ import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftCreature;
+import net.minecraft.server.v1_8_R3.BlockPosition;
+import net.minecraft.server.v1_8_R3.IBlockData;
+import net.minecraft.server.v1_8_R3.EnumDirection;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -1290,6 +1296,12 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             Block b = event.getClickedBlock();
             Material type = b.getType();
 
+            // Permite dormir en la cama aunque haya policías cerca (bypasea el bloqueo falso de "monstruos cercanos")
+            if (type == Material.BED_BLOCK) {
+                handleBedSleepProtection(p, b, event);
+                if (event.isCancelled()) return;
+            }
+
             // Bloqueo y Reclamo de Cofres Privados Global
             if (type == Material.CHEST || type == Material.TRAPPED_CHEST) {
                 if (chestManager != null) {
@@ -1361,6 +1373,71 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                     event.setCancelled(true);
                     p.sendMessage(ChatColor.RED + "[Casa de Xavi] ¡Los cofres y hornos de Xavi estan bloqueados!");
                 }
+            }
+        }
+    }
+
+    /**
+     * Permite a los jugadores acostarse y descansar en sus camas aunque haya policías patrullando cerca.
+     * En vanilla 1.8.8, Minecraft cuenta a los policías (EntityZombie) como monstruos hostiles
+     * y bloquea el descanso con "No puedes dormir ahora, hay monstruos cerca".
+     * Si los únicos monstruos presentes en el radio de 8x5x8 son agentes de policía, bypaseamos
+     * temporalmente la restricción para permitir el descanso normal, pero manteniendo el bloqueo
+     * si hay monstruos hostiles reales (creepers, esqueletos, zombis salvajes, arañas, etc.).
+     */
+    private void handleBedSleepProtection(Player p, Block bedBlock, PlayerInteractEvent event) {
+        if (policeManager == null) return;
+        // Si el jugador está agachado con un objeto en la mano, vanilla no interactúa con la cama
+        if (p.isSneaking() && p.getItemInHand() != null && p.getItemInHand().getType() != Material.AIR) {
+            return;
+        }
+
+        Location bedLoc = bedBlock.getLocation();
+        World world = bedLoc.getWorld();
+
+        List<net.minecraft.server.v1_8_R3.Entity> nearbyPoliceNms = new ArrayList<net.minecraft.server.v1_8_R3.Entity>();
+        boolean realMonsterNearby = false;
+
+        // Escaneamos el área circundante a la cama (radio 9 horizontal, 6 vertical)
+        for (Entity e : world.getNearbyEntities(bedLoc, 9.0, 6.0, 9.0)) {
+            if (e instanceof Monster) {
+                if (policeManager.isPolice(e)) {
+                    if (e instanceof CraftCreature) {
+                        nearbyPoliceNms.add(((CraftCreature) e).getHandle());
+                    }
+                } else {
+                    realMonsterNearby = true;
+                }
+            }
+        }
+
+        // Si no hay policías cerca, dejamos que vanilla actúe de forma habitual
+        if (nearbyPoliceNms.isEmpty()) {
+            return;
+        }
+
+        // Si hay algún monstruo hostil auténtico cerca, vanilla debe cancelar la cama por seguridad
+        if (realMonsterNearby) {
+            return;
+        }
+
+        // Los únicos "monstruos" cercanos son los policías: bypaseamos la comprobación de forma limpia
+        event.setCancelled(true);
+
+        for (net.minecraft.server.v1_8_R3.Entity nmsCop : nearbyPoliceNms) {
+            nmsCop.dead = true;
+        }
+        try {
+            CraftPlayer cp = (CraftPlayer) p;
+            CraftWorld cw = (CraftWorld) world;
+            BlockPosition pos = new BlockPosition(bedBlock.getX(), bedBlock.getY(), bedBlock.getZ());
+            IBlockData data = cw.getHandle().getType(pos);
+            data.getBlock().interact(cw.getHandle(), pos, data, cp.getHandle(), EnumDirection.UP, 0.5f, 0.5f, 0.5f);
+        } catch (Exception ex) {
+            getLogger().warning("[BedProtect] Error al interactuar con cama: " + ex.getMessage());
+        } finally {
+            for (net.minecraft.server.v1_8_R3.Entity nmsCop : nearbyPoliceNms) {
+                nmsCop.dead = false;
             }
         }
     }
