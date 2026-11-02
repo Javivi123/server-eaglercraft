@@ -40,6 +40,19 @@ import java.util.Random;
  * 5. Agente Navarro -> Unidad de Intervención Rápida (Vigilancia Dinámica donde haya Jugadores)
  */
 public class PoliceManager {
+    private static java.lang.reflect.Field FIELD_TARGET_B = null;
+    private static java.lang.reflect.Field FIELD_TARGET_C = null;
+
+    static {
+        try {
+            Class<?> pgsClass = net.minecraft.server.v1_8_R3.PathfinderGoalSelector.class;
+            FIELD_TARGET_B = pgsClass.getDeclaredField("b");
+            FIELD_TARGET_B.setAccessible(true);
+            FIELD_TARGET_C = pgsClass.getDeclaredField("c");
+            FIELD_TARGET_C.setAccessible(true);
+        } catch (Exception ignored) {}
+    }
+
 
     public static class PatrolSector {
         public String id;
@@ -111,20 +124,45 @@ public class PoliceManager {
                 return false; // Está a su espalda o fuera de su campo visual
             }
 
-            // Raycast de comprobación de muros opacos
-            Vector ray = targetLoc.toVector().subtract(eye.toVector());
-            double length = ray.length();
+            // Raycast optimizado sin asignaciones masivas de memoria
+            double startX = eye.getX();
+            double startY = eye.getY();
+            double startZ = eye.getZ();
+
+            double dx = targetLoc.getX() - startX;
+            double dy = targetLoc.getY() - startY;
+            double dz = targetLoc.getZ() - startZ;
+            double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (length < 1.0) return true;
 
-            Vector step = ray.clone().normalize().multiply(0.45);
-            Location cur = eye.clone();
-            int steps = (int) (length / 0.45);
+            double stepX = (dx / length) * 0.5;
+            double stepY = (dy / length) * 0.5;
+            double stepZ = (dz / length) * 0.5;
+            int steps = (int) (length / 0.5);
+
+            World w = eye.getWorld();
+            int lastBx = Integer.MIN_VALUE, lastBy = Integer.MIN_VALUE, lastBz = Integer.MIN_VALUE;
+
+            double curX = startX;
+            double curY = startY;
+            double curZ = startZ;
 
             for (int i = 0; i < steps - 1; i++) {
-                cur.add(step);
-                Block b = cur.getBlock();
-                if (b != null && isVisionBlocking(b.getType())) {
-                    return false; // Muro u obstáculo opaco
+                curX += stepX;
+                curY += stepY;
+                curZ += stepZ;
+                int bx = (int) Math.floor(curX);
+                int by = (int) Math.floor(curY);
+                int bz = (int) Math.floor(curZ);
+
+                if (bx != lastBx || by != lastBy || bz != lastBz) {
+                    lastBx = bx;
+                    lastBy = by;
+                    lastBz = bz;
+                    Block b = w.getBlockAt(bx, by, bz);
+                    if (b != null && isVisionBlocking(b.getType())) {
+                        return false;
+                    }
                 }
             }
             return true;
@@ -433,15 +471,11 @@ public class PoliceManager {
                 net.minecraft.server.v1_8_R3.EntityInsentient nms = ((CraftCreature) cop).getHandle();
                 nms.getAttributeInstance(net.minecraft.server.v1_8_R3.GenericAttributes.MOVEMENT_SPEED).setValue(0.35D);
 
-                // Desactivar completamente la agresividad hostil del zombi hacia los jugadores
-                java.lang.reflect.Field bField = net.minecraft.server.v1_8_R3.PathfinderGoalSelector.class.getDeclaredField("b");
-                bField.setAccessible(true);
-                java.util.List<?> targetB = (java.util.List<?>) bField.get(nms.targetSelector);
-                targetB.clear();
-                java.lang.reflect.Field cField = net.minecraft.server.v1_8_R3.PathfinderGoalSelector.class.getDeclaredField("c");
-                cField.setAccessible(true);
-                java.util.List<?> targetC = (java.util.List<?>) cField.get(nms.targetSelector);
-                targetC.clear();
+                // Desactivar completamente la agresividad hostil del zombi hacia los jugadores mediante campos estáticos cacheados
+                if (FIELD_TARGET_B != null && FIELD_TARGET_C != null) {
+                    ((java.util.List<?>) FIELD_TARGET_B.get(nms.targetSelector)).clear();
+                    ((java.util.List<?>) FIELD_TARGET_C.get(nms.targetSelector)).clear();
+                }
             }
         } catch (Exception ignored) {}
 
@@ -479,6 +513,11 @@ public class PoliceManager {
                     // Los policías son pacíficos y nunca toman de objetivo a inocentes
                     if (off.entity instanceof Creature) {
                         ((Creature) off.entity).setTarget(null);
+                    }
+
+                    // Regeneración pasiva de salud (2 HP por ciclo hasta 60 HP)
+                    if (off.entity.getHealth() < off.entity.getMaxHealth()) {
+                        off.entity.setHealth(Math.min(off.entity.getMaxHealth(), off.entity.getHealth() + 2.0));
                     }
 
                     off.ticksInCurrentSector += 4;
@@ -543,14 +582,20 @@ public class PoliceManager {
             }
         }
 
-        // 3. PATRULLA POR WAYPOINTS DEL SECTOR ACTIVO DEL OFICIAL
+        // 3. PATRULLA POR WAYPOINTS DEL SECTOR ACTIVO DEL OFICIAL (con carga segura de chunks)
         if (off.activeSector != null && !off.activeSector.waypoints.isEmpty()) {
             Location targetWp = off.activeSector.waypoints.get(off.waypointIndex);
             off.waypointIndex = (off.waypointIndex + 1) % off.activeSector.waypoints.size();
 
+            World targetWorld = targetWp.getWorld();
+            int chunkX = targetWp.getBlockX() >> 4;
+            int chunkZ = targetWp.getBlockZ() >> 4;
+            if (!targetWorld.isChunkLoaded(chunkX, chunkZ)) {
+                targetWorld.loadChunk(chunkX, chunkZ);
+            }
+
             double distSq = pLoc.distanceSquared(targetWp);
             if (distSq > 35.0 * 35.0 || Math.abs(pLoc.getBlockY() - targetWp.getBlockY()) > 10) {
-                // Desplazamiento táctico si está en otro piso o muy distante
                 Location safe = findSafeStandingLocation(targetWp);
                 off.entity.teleport(safe);
             } else {

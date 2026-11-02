@@ -766,7 +766,12 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         if (policeManager != null && policeManager.isPolice(event.getEntity())) {
-            if (event.getCause() == EntityDamageEvent.DamageCause.FIRE || event.getCause() == EntityDamageEvent.DamageCause.FIRE_TICK || event.getCause() == EntityDamageEvent.DamageCause.LAVA || event.getCause() == EntityDamageEvent.DamageCause.FALL) {
+            EntityDamageEvent.DamageCause c = event.getCause();
+            if (c == EntityDamageEvent.DamageCause.FIRE || c == EntityDamageEvent.DamageCause.FIRE_TICK
+                    || c == EntityDamageEvent.DamageCause.LAVA || c == EntityDamageEvent.DamageCause.FALL
+                    || c == EntityDamageEvent.DamageCause.DROWNING || c == EntityDamageEvent.DamageCause.SUFFOCATION
+                    || c == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION || c == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
+                    || c == EntityDamageEvent.DamageCause.LIGHTNING || c == EntityDamageEvent.DamageCause.MAGIC) {
                 event.setCancelled(true);
                 return;
             }
@@ -803,7 +808,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 }
             }
         }
-        // Interceptación de ataque al policía (de frente o por la espalda)
+        // Interceptación de ataque al policía: SOLO jugadores pueden dañarle (sigilo). Mobs ignorados.
         if (policeManager != null && policeManager.isPolice(event.getEntity())) {
             Player copAttacker = null;
             if (event.getDamager() instanceof Player) {
@@ -816,6 +821,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             }
             if (copAttacker != null) {
                 policeManager.handleAttackOnPolice(event.getEntity(), copAttacker);
+                return;
+            } else {
+                // Inmunidad frente a ataques de mobs hostiles (esqueletos, creepers, arañas, etc.)
+                event.setCancelled(true);
                 return;
             }
         }
