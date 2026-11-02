@@ -108,11 +108,19 @@ public class PoliceManager {
         }
 
         public boolean isAlive() {
-            return entity != null && entity.isValid() && !entity.isDead();
+            return !killedThisSession && entity != null && !entity.isDead();
+        }
+
+        public boolean isChunkLoaded() {
+            if (entity == null) return false;
+            Location loc = entity.getLocation();
+            World w = loc.getWorld();
+            if (w == null) return false;
+            return w.isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4);
         }
 
         public boolean canSee(Location targetLoc) {
-            if (!isAlive()) return false;
+            if (!isAlive() || !isChunkLoaded()) return false;
             Location eye = entity.getEyeLocation();
             if (!eye.getWorld().equals(targetLoc.getWorld())) return false;
 
@@ -391,13 +399,26 @@ public class PoliceManager {
 
         for (PoliceOfficer off : officers.values()) {
             if (off.killedThisSession) continue;
-            if (off.isAlive()) continue;
+            if (off.entity != null && !off.entity.isDead()) continue;
 
             spawnOfficer(off, w);
         }
     }
 
     private void spawnOfficer(PoliceOfficer off, World w) {
+        if (off.killedThisSession) return;
+        if (off.entity != null && !off.entity.isDead()) return;
+
+        // Limpiar cualquier zombi huérfano con este nombre antes de desplegar
+        for (Entity e : w.getEntities()) {
+            if (e instanceof LivingEntity) {
+                String cName = ((LivingEntity) e).getCustomName();
+                if (cName != null && cName.contains(off.name)) {
+                    e.remove();
+                }
+            }
+        }
+
         Location spawnLoc = null;
         if (off.activeSector != null && !off.activeSector.waypoints.isEmpty()) {
             spawnLoc = off.activeSector.waypoints.get(0).clone();
@@ -487,10 +508,24 @@ public class PoliceManager {
 
     public void removePolice() {
         for (PoliceOfficer off : officers.values()) {
-            if (off.entity != null && off.entity.isValid()) {
-                off.entity.remove();
+            if (off.entity != null) {
+                try {
+                    off.entity.remove();
+                } catch (Exception ignored) {}
             }
             off.entity = null;
+        }
+
+        // Limpiar cualquier zombi residual con nombre de policía en todos los mundos cargados
+        for (World w : Bukkit.getWorlds()) {
+            for (Entity e : w.getEntities()) {
+                if (e instanceof LivingEntity) {
+                    String name = ((LivingEntity) e).getCustomName();
+                    if (name != null && name.contains("POLICÍA")) {
+                        e.remove();
+                    }
+                }
+            }
         }
     }
 
@@ -507,8 +542,21 @@ public class PoliceManager {
                 for (PoliceOfficer off : officers.values()) {
                     if (off.killedThisSession) continue;
 
-                    if (!off.isAlive()) {
-                        spawnPolice();
+                    // Si no tiene entidad asignada o no existe, intentar spawn inicial
+                    if (off.entity == null) {
+                        World w = Bukkit.getWorld("world");
+                        if (w != null) spawnOfficer(off, w);
+                        continue;
+                    }
+
+                    // Si la entidad murió en combate, no respawnear durante la jornada
+                    if (off.entity.isDead()) {
+                        continue;
+                    }
+
+                    // Si el chunk donde está el policía está descargado porque ningún jugador está cerca,
+                    // no forzar la carga del chunk ni ejecutar pasos para evitar tirones de I/O en el servidor
+                    if (!off.isChunkLoaded()) {
                         continue;
                     }
 

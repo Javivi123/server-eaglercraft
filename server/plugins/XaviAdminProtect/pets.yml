@@ -9,3 +9,13 @@ pets:
     y: 76.0
     z: -2.5
     claimedDate: 01/11/2026 18:00:00
+  luis:
+    uuid: db14cd5e-ca0a-4b31-b606-fd9bb56c2190
+    name: Luis
+    owner: Xavi
+    type: CHICKEN
+    world: world
+    x: -268.8476597356204
+    y: 76.0
+    z: -1.29332746868136
+    claimedDate: 02/11/2026 22:39:08

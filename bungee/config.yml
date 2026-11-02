@@ -28,7 +28,7 @@ permissions:
   - bungeecord.command.kick
 log_pings: true
 connection_throttle_limit: 3
-server_connect_timeout: 5000
+server_connect_timeout: 10000
 timeout: 30000
 player_limit: -1
 prevent_proxy_connections: false
