@@ -405,8 +405,10 @@ public class PoliceManager {
 
         // Botas
         ItemStack boots = new ItemStack(Material.IRON_BOOTS);
+        boots.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.PROTECTION_FALL, 4);
+        boots.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.DEPTH_STRIDER, 3);
         ItemMeta bMeta = boots.getItemMeta();
-        bMeta.setDisplayName(ChatColor.BLUE + "Botas Policiales Reforzadas");
+        bMeta.setDisplayName(ChatColor.BLUE + "Botas Tácticas de Salto y Agilidad");
         boots.setItemMeta(bMeta);
         eq.setBoots(boots);
         eq.setBootsDropChance(0.0f);
@@ -420,7 +422,15 @@ public class PoliceManager {
         eq.setItemInHandDropChance(0.0f);
 
         cop.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 999999, 1, false, false));
-        cop.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 0, false, false));
+        cop.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 2, false, false)); // Speed III atlético
+        cop.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 999999, 1, false, false));  // Salto Boost II (parkour)
+        cop.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 999999, 0, false, false));
+
+        try {
+            if (cop instanceof CraftCreature) {
+                ((CraftCreature) cop).getHandle().getAttributeInstance(net.minecraft.server.v1_8_R3.GenericAttributes.MOVEMENT_SPEED).setValue(0.35D);
+            }
+        } catch (Exception ignored) {}
 
         off.entity = cop;
         plugin.getLogger().info("[PoliceManager] " + off.name + " (" + off.rank + ") desplegado en " + spawnLoc.getBlockX() + ", " + spawnLoc.getBlockY() + ", " + spawnLoc.getBlockZ() + " (" + (off.activeSector != null ? off.activeSector.name : "Zona Asignada") + ")");
@@ -464,13 +474,13 @@ public class PoliceManager {
                         }
                     }
 
-                    off.ticksInCurrentSector += 8;
-                    if (off.suspicionCooldown > 0) off.suspicionCooldown -= 8;
+                    off.ticksInCurrentSector += 4;
+                    if (off.suspicionCooldown > 0) off.suspicionCooldown -= 4;
 
                     patrolOfficerStep(off);
                 }
             }
-        }, 80L, 100L); // Cada 5 segundos procesa ciclo de patrullaje para los 5 agentes
+        }, 40L, 50L); // Cada 2.5 segundos procesa ciclo de patrullaje ultrarrápido
     }
 
     private void patrolOfficerStep(PoliceOfficer off) {
@@ -500,7 +510,7 @@ public class PoliceManager {
                 } else if (nearestDist > 8.0) {
                     try {
                         if (off.entity instanceof CraftCreature) {
-                            ((CraftCreature) off.entity).getHandle().getNavigation().a(pTarget.getX(), pTarget.getY(), pTarget.getZ(), 1.15);
+                            ((CraftCreature) off.entity).getHandle().getNavigation().a(pTarget.getX(), pTarget.getY(), pTarget.getZ(), 1.65);
                         }
                     } catch (Exception ignored) {}
                 }
@@ -541,7 +551,7 @@ public class PoliceManager {
 
             try {
                 if (off.entity instanceof CraftCreature) {
-                    ((CraftCreature) off.entity).getHandle().getNavigation().a(destX, destY, destZ, 1.15);
+                    ((CraftCreature) off.entity).getHandle().getNavigation().a(destX, destY, destZ, 1.50);
                 }
             } catch (Exception ignored) {}
 
@@ -564,7 +574,7 @@ public class PoliceManager {
             } else {
                 try {
                     if (off.entity instanceof CraftCreature) {
-                        ((CraftCreature) off.entity).getHandle().getNavigation().a(targetWp.getX(), targetWp.getY(), targetWp.getZ(), 1.05);
+                        ((CraftCreature) off.entity).getHandle().getNavigation().a(targetWp.getX(), targetWp.getY(), targetWp.getZ(), 1.40);
                     }
                 } catch (Exception ignored) {}
             }
