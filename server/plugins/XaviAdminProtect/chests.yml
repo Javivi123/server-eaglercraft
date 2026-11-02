@@ -104,20 +104,6 @@ chests:
     z: -147
     owner: becanyahu
     claimedDate: 2026-10-31 14:40
-  world_-225_65_100:
-    world: world
-    x: -225
-    y: 65
-    z: 100
-    owner: Piccino
-    claimedDate: 2026-11-01 14:24
-  world_-225_65_101:
-    world: world
-    x: -225
-    y: 65
-    z: 101
-    owner: Piccino
-    claimedDate: 2026-11-01 14:24
   world_-278_76_-9:
     world: world
     x: -278
@@ -195,10 +181,66 @@ chests:
     z: -167
     owner: taetti
     claimedDate: 2026-11-01 18:52
-  world_-780_41_-160:
+  world_-228_64_98:
     world: world
-    x: -780
-    y: 41
-    z: -160
+    x: -228
+    y: 64
+    z: 98
+    owner: Leo
+    claimedDate: 2026-11-02 13:16
+  world_-11_77_-80:
+    world: world
+    x: -11
+    y: 77
+    z: -80
+    owner: Piccino
+    claimedDate: 2026-11-02 18:39
+  world_-12_77_-80:
+    world: world
+    x: -12
+    y: 77
+    z: -80
+    owner: Piccino
+    claimedDate: 2026-11-02 18:39
+  world_-12_76_-80:
+    world: world
+    x: -12
+    y: 76
+    z: -80
+    owner: Piccino
+    claimedDate: 2026-11-02 18:39
+  world_-11_76_-80:
+    world: world
+    x: -11
+    y: 76
+    z: -80
+    owner: Piccino
+    claimedDate: 2026-11-02 18:39
+  world_-6_76_-80:
+    world: world
+    x: -6
+    y: 76
+    z: -80
+    owner: Leo
+    claimedDate: 2026-11-02 18:53
+  world_-5_76_-80:
+    world: world
+    x: -5
+    y: 76
+    z: -80
+    owner: Leo
+    claimedDate: 2026-11-02 18:53
+  world_-1007_65_-515:
+    world: world
+    x: -1007
+    y: 65
+    z: -515
     owner: taetti
-    claimedDate: 2026-11-01 18:53
+    claimedDate: 2026-11-02 19:07
+  world_-819_67_-720:
+    world: world
+    x: -819
+    y: 67
+    z: -720
+    owner: taetti
+    claimedDate: 2026-11-02 19:12

@@ -8,7 +8,7 @@ anti-fire-spread: false
 global-build-lock: false
 trusted-friends: []
 public-blocks: {}
-keep-inventory: false
+keep-inventory: true
 zones:
   CasaPrincipal:
     world: world

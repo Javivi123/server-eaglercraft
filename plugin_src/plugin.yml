@@ -121,3 +121,15 @@ commands:
   online:
     description: Muestra los jugadores que estan conectados al servidor
     aliases: [jugadores, quien, conectados, onlineplayers]
+  mascota:
+    description: Registra y protege a un animal mirandolo fijamente con la seguridad de Josefa
+    aliases: [protegermascota, nombrarmascota, setmascota, pet]
+  listamascotas:
+    description: Muestra la lista de mascotas protegidas en el servidor
+    aliases: [vermascotas, pets]
+  liberarmascota:
+    description: Quita la proteccion y nombre a una mascota registrada
+    aliases: [desregistrarmascota, unregisterpet]
+  policia:
+    description: Comandos de administracion para el Oficial de Policia IA
+    aliases: [police, agentetorres, cop]

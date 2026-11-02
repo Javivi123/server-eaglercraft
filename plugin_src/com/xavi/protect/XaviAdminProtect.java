@@ -33,6 +33,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.entity.Monster;
 import org.bukkit.DyeColor;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.LeashHitch;
@@ -82,6 +83,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     private HonorManager honorManager;
     private ChestManager chestManager;
     private NerfManager nerfManager;
+    private PetManager petManager;
+    private PoliceManager policeManager;
 
     public static class Zone {
         public String name;
@@ -171,6 +174,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         honorManager = new HonorManager(this);
         chestManager = new ChestManager(this);
         nerfManager = new NerfManager(this);
+        petManager = new PetManager(this);
+        policeManager = new PoliceManager(this);
 
         Bukkit.getPluginManager().registerEvents(this, this);
 
@@ -227,6 +232,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         if (honorManager != null) honorManager.save();
         if (chestManager != null) chestManager.save();
         if (nerfManager != null) nerfManager.save();
+        if (petManager != null) petManager.save();
+        if (policeManager != null) policeManager.removePolice();
         saveAllWorldsSilent();
         getLogger().info("[XaviAdminProtect] Mundo, alianzas, honor, cofres, nerfeos y rangos guardados correctamente.");
     }
@@ -235,6 +242,23 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public HonorManager getHonorManager() { return honorManager; }
     public ChestManager getChestManager() { return chestManager; }
     public NerfManager getNerfManager() { return nerfManager; }
+    public PetManager getPetManager() { return petManager; }
+    public PoliceManager getPoliceManager() { return policeManager; }
+    public String getOwnerName() { return ownerName; }
+    public Map<String, List<String>> getPlayerWarnings() { return playerWarnings; }
+
+        public void addWarning(String target, String reason, String issuer) {
+        if (target.equalsIgnoreCase(ownerName)) return;
+        String key = target.toLowerCase();
+        List<String> list = playerWarnings.get(key);
+        if (list == null) {
+            list = new ArrayList<String>();
+            playerWarnings.put(key, list);
+        }
+        String timeStr = new SimpleDateFormat("HH:mm").format(new Date());
+        list.add("[" + timeStr + "] (" + issuer + ") " + reason);
+        saveWarnings();
+    }
 
     private void loadWarnings() {
         try {
@@ -405,6 +429,29 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         return trustedFriends.contains(p.getName().toLowerCase());
     }
 
+        public LivingEntity getTargetAnimal(Player p, int maxDistance) {
+        Location eye = p.getEyeLocation();
+        org.bukkit.util.Vector dir = eye.getDirection().normalize().multiply(0.35);
+        Location cur = eye.clone();
+        int steps = (int) (maxDistance / 0.35);
+
+        for (int i = 0; i < steps; i++) {
+            cur.add(dir);
+            Block b = cur.getBlock();
+            if (b != null && b.getType().isSolid() && b.getType() != Material.GLASS && b.getType() != Material.THIN_GLASS) {
+                return null;
+            }
+            for (Entity e : cur.getWorld().getNearbyEntities(cur, 0.75, 0.75, 0.75)) {
+                if (e instanceof LivingEntity && !e.equals(p) && !(e instanceof Player)) {
+                    if (e instanceof org.bukkit.entity.Animals || e instanceof org.bukkit.entity.Tameable || e instanceof org.bukkit.entity.IronGolem || e instanceof org.bukkit.entity.Villager) {
+                        return (LivingEntity) e;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     public Block getTargetChestBlock(Player p, int maxDistance) {
         Location eye = p.getEyeLocation();
         org.bukkit.util.Vector dir = eye.getDirection().normalize().multiply(0.4);
@@ -510,7 +557,6 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         return true;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void sendOnlinePlayersList(CommandSender sender) {
         if (sender == null) return;
         Player p = (sender instanceof Player) ? (Player) sender : null;
@@ -553,6 +599,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         sender.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "--------------------------------------------------");
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent event) {
         idleSeconds = 0;
         final Player p = event.getPlayer();
@@ -700,6 +747,12 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
+        if (policeManager != null && policeManager.isPolice(event.getEntity())) {
+            if (event.getCause() == EntityDamageEvent.DamageCause.FIRE || event.getCause() == EntityDamageEvent.DamageCause.FIRE_TICK || event.getCause() == EntityDamageEvent.DamageCause.LAVA) {
+                event.setCancelled(true);
+                return;
+            }
+        }
         if (event.getEntity() instanceof Player) {
             Player p = (Player) event.getEntity();
             if (godPlayers.contains(p.getName().toLowerCase())) {
@@ -718,6 +771,23 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        // Interceptación de ataque al policía (de frente o por la espalda)
+        if (policeManager != null && policeManager.isPolice(event.getEntity())) {
+            Player copAttacker = null;
+            if (event.getDamager() instanceof Player) {
+                copAttacker = (Player) event.getDamager();
+            } else if (event.getDamager() instanceof Projectile) {
+                Projectile proj = (Projectile) event.getDamager();
+                if (proj.getShooter() instanceof Player) {
+                    copAttacker = (Player) proj.getShooter();
+                }
+            }
+            if (copAttacker != null) {
+                policeManager.handleAttackOnPolice(copAttacker);
+                return;
+            }
+        }
+
         if (isJosefa(event.getEntity())) {
             Player attacker = null;
             if (event.getDamager() instanceof Player) {
@@ -730,12 +800,19 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             }
 
             if (attacker != null) {
-                if (attacker.getName().equalsIgnoreCase(ownerName)) {
-                    // Xavi si puede interactuar o esquilar a su mascota
+                PetManager.PetData pd = (petManager != null ? petManager.getPetData(event.getEntity()) : null);
+                String petOwner = (pd != null ? pd.owner : ownerName);
+                String petName = (pd != null ? pd.name : "Josefa");
+
+                if (attacker.getName().equalsIgnoreCase(petOwner) || attacker.getName().equalsIgnoreCase(ownerName)) {
+                    // El dueño o Xavi pueden interactuar/alimentar a su mascota
                     return;
                 }
                 event.setCancelled(true);
-                banPlayer(attacker.getName(), "Atacar o intentar matar a la mascota de Xavi (Josefa)");
+                banPlayer(attacker.getName(), "Atacar o intentar matar a la mascota protegida de " + petOwner + " (" + petName + ")");
+                if (policeManager != null) {
+                    policeManager.witnessCrime(attacker, "Ataque a Mascota", "intentar matar a " + petName, event.getEntity().getLocation());
+                }
                 return;
             } else {
                 event.setCancelled(true);
@@ -760,6 +837,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         }
 
         if (attacker != null && event.getEntity() instanceof Player) {
+            if (policeManager != null) {
+                policeManager.witnessCrime(attacker, "Agresión Física", "atacar a un ciudadano en la vía pública", event.getEntity().getLocation());
+            }
             Player victim = (Player) event.getEntity();
             if (frozenPlayers.contains(attacker.getName().toLowerCase())) {
                 event.setCancelled(true);
@@ -822,18 +902,39 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDeath(EntityDeathEvent event) {
-        if (isJosefa(event.getEntity())) {
-            Player killer = event.getEntity().getKiller();
-            if (killer != null && !killer.getName().equalsIgnoreCase(ownerName)) {
-                banPlayer(killer.getName(), "Matar a la mascota de Xavi (Josefa)");
+        if (policeManager != null && policeManager.isPolice(event.getEntity())) {
+            policeManager.handlePoliceDeath();
+            return;
+        }
+
+        if (event.getEntity() instanceof Player) {
+            Player victim = (Player) event.getEntity();
+            Player killer = victim.getKiller();
+            if (killer != null && !killer.equals(victim) && policeManager != null) {
+                policeManager.witnessCrime(killer, "Homicidio en Primer Grado", "asesinar al ciudadano " + victim.getName(), victim.getLocation());
             }
-            // Auto-reaparición de Josefa para que Xavi nunca la pierda
+        }
+
+        if (isJosefa(event.getEntity())) {
+            PetManager.PetData pd = (petManager != null ? petManager.getPetData(event.getEntity()) : null);
+            final PetManager.PetData finalPd = pd;
+            String petOwner = (pd != null ? pd.owner : ownerName);
+            String petName = (pd != null ? pd.name : "Josefa");
+
+            Player killer = event.getEntity().getKiller();
+            if (killer != null && !killer.getName().equalsIgnoreCase(ownerName) && !killer.getName().equalsIgnoreCase(petOwner)) {
+                banPlayer(killer.getName(), "Matar a la mascota protegida de " + petOwner + " (" + petName + ")");
+            }
             final World w = event.getEntity().getWorld();
             Bukkit.getScheduler().runTaskLater(this, new Runnable() {
                 @Override
                 public void run() {
-                    Zone house = zones.isEmpty() ? null : zones.get(0);
-                    setupJosefa(w, house, null, null);
+                    if (finalPd != null && petManager != null) {
+                        petManager.respawnPet(finalPd);
+                    } else {
+                        Zone house = zones.isEmpty() ? null : zones.get(0);
+                        setupJosefa(w, house, null, null);
+                    }
                 }
             }, 30L);
         }
@@ -1385,15 +1486,19 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         if (isJosefa(event.getRightClicked())) {
             Player p = event.getPlayer();
-            if (!p.getName().equalsIgnoreCase(ownerName) && !isTrusted(p)) {
+            PetManager.PetData pd = (petManager != null ? petManager.getPetData(event.getRightClicked()) : null);
+            String petOwner = (pd != null ? pd.owner : ownerName);
+            String petName = (pd != null ? pd.name : "Josefa");
+            if (!p.getName().equalsIgnoreCase(petOwner) && !p.getName().equalsIgnoreCase(ownerName) && !isTrusted(p)) {
                 event.setCancelled(true);
-                p.sendMessage(ChatColor.RED + "¡No toques a Josefa! Es la mascota sagrada de Xavi.");
+                p.sendMessage(ChatColor.RED + "¡No toques a " + petName + "! Es la mascota sagrada de " + petOwner + ".");
             }
         }
     }
 
     public boolean isJosefa(Entity e) {
         if (e == null) return false;
+        if (petManager != null && petManager.isProtectedPet(e)) return true;
         if (e instanceof Sheep) {
             Sheep s = (Sheep) e;
             String name = s.getCustomName();
@@ -1675,6 +1780,131 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             return true;
         }
 
+        // ================= SISTEMA DE MASCOTAS PROTEGIDAS (ESTILO JOSEFA) =================
+        if (c.equals("mascota") || c.equals("protegermascota") || c.equals("nombrarmascota") || c.equals("setmascota") || c.equals("pet")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(ChatColor.RED + "Solo los jugadores pueden registrar mascotas mirándolas.");
+                return true;
+            }
+            if (args.length < 1) {
+                sender.sendMessage(ChatColor.YELLOW + "Uso: /mascota <nombre>");
+                sender.sendMessage(ChatColor.GRAY + "Mira fijamente a cualquier animal (a menos de 6 bloques) y escribe su nombre para protegerlo como a Josefa.");
+                return true;
+            }
+            Player p = (Player) sender;
+            LivingEntity target = getTargetAnimal(p, 6);
+            if (target == null) {
+                p.sendMessage(ChatColor.RED + "Debes mirar fijamente a un animal (oveja, vaca, cerdo, caballo, perro, gato, etc.) a menos de 6 bloques.");
+                return true;
+            }
+
+            String petName = args[0].trim();
+            if (petManager != null) {
+                boolean ok = petManager.registerPet(target, petName, p.getName());
+                if (ok) {
+                    p.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "✔ [Mascota Protegida Activada]");
+                    p.sendMessage(ChatColor.YELLOW + "  Nombre: " + ChatColor.AQUA + "" + ChatColor.BOLD + petName);
+                    p.sendMessage(ChatColor.YELLOW + "  Dueño: " + ChatColor.GOLD + p.getName());
+                    p.sendMessage(ChatColor.GREEN + "  Seguridad de Josefa: " + ChatColor.WHITE + "Inmunidad ambiental total, nombre flotante verde, auto-ban permanente a agresores y reaparición automática.");
+                    p.playSound(p.getLocation(), Sound.LEVEL_UP, 1.0f, 1.5f);
+                } else {
+                    p.sendMessage(ChatColor.RED + "Error al registrar la mascota.");
+                }
+            }
+            return true;
+        }
+
+        if (c.equals("listamascotas") || c.equals("vermascotas") || c.equals("pets")) {
+            if (petManager == null) {
+                sender.sendMessage(ChatColor.RED + "Gestor de mascotas no inicializado.");
+                return true;
+            }
+            List<PetManager.PetData> pList = petManager.getAllPets();
+            sender.sendMessage(ChatColor.GOLD + "=== Mascotas Protegidas en el Servidor (" + pList.size() + ") ===");
+            for (PetManager.PetData pd : pList) {
+                sender.sendMessage(ChatColor.GREEN + "• " + ChatColor.BOLD + pd.name + ChatColor.RESET + ChatColor.YELLOW + " (" + pd.entityType + ") - Dueño: " + ChatColor.GOLD + pd.owner + ChatColor.GRAY + " en [" + (int)pd.x + ", " + (int)pd.y + ", " + (int)pd.z + "]");
+            }
+            return true;
+        }
+
+        if (c.equals("liberarmascota") || c.equals("desregistrarmascota")) {
+            if (args.length < 1) {
+                sender.sendMessage(ChatColor.YELLOW + "Uso: /liberarmascota <nombre>");
+                return true;
+            }
+            if (petManager == null) return true;
+            PetManager.PetData pd = petManager.getPetByName(args[0]);
+            if (pd == null) {
+                sender.sendMessage(ChatColor.RED + "No se encontró ninguna mascota protegida con el nombre '" + args[0] + "'.");
+                return true;
+            }
+            if (!sender.getName().equalsIgnoreCase(pd.owner) && !isOwner(sender)) {
+                sender.sendMessage(ChatColor.RED + "Solo el dueño (" + pd.owner + ") o Xavi pueden liberar a esta mascota.");
+                return true;
+            }
+            petManager.unregisterPet(pd.name);
+            sender.sendMessage(ChatColor.YELLOW + "La mascota '" + pd.name + "' ha sido liberada y ya no cuenta con protección especial.");
+            return true;
+        }
+
+        // ================= COMANDOS DEL POLICÍA IA =================
+        if (c.equals("policia") || c.equals("police") || c.equals("cop") || c.equals("agentetorres")) {
+            if (policeManager == null) {
+                sender.sendMessage(ChatColor.RED + "Gestor de policía no inicializado.");
+                return true;
+            }
+            String sub = args.length > 0 ? args[0].toLowerCase() : "info";
+
+            if (sub.equals("spawn") || sub.equals("generar")) {
+                if (!isOwner(sender)) {
+                    sender.sendMessage(ChatColor.RED + "Solo Xavi o consola pueden reaparecer al policía manualmente.");
+                    return true;
+                }
+                policeManager.setKilledThisSession(false);
+                policeManager.spawnPolice();
+                sender.sendMessage(ChatColor.BLUE + "🚔 Oficial de policía desplegado en servicio.");
+                return true;
+            }
+
+            if (sub.equals("revivir") || sub.equals("revive")) {
+                if (!isOwner(sender)) {
+                    sender.sendMessage(ChatColor.RED + "Solo Xavi o consola pueden revivir al policía.");
+                    return true;
+                }
+                policeManager.setKilledThisSession(false);
+                policeManager.spawnPolice();
+                sender.sendMessage(ChatColor.BLUE + "🚔 Oficial de policía revivido y patrullando.");
+                return true;
+            }
+
+            if (sub.equals("tp")) {
+                if (!(sender instanceof Player)) return true;
+                Player p = (Player) sender;
+                LivingEntity cop = policeManager.getPoliceEntity();
+                if (cop != null) {
+                    p.teleport(cop.getLocation());
+                    p.sendMessage(ChatColor.BLUE + "🚔 Te has teletransportado al Oficial de Policía.");
+                } else {
+                    p.sendMessage(ChatColor.RED + "El oficial de policía no está en el mundo en este momento.");
+                }
+                return true;
+            }
+
+            // info
+            LivingEntity cop = policeManager.getPoliceEntity();
+            sender.sendMessage(ChatColor.BLUE + "=== Estado del Oficial de Policía BOT ===");
+            if (policeManager.isKilledThisSession()) {
+                sender.sendMessage(ChatColor.RED + "Estado: ABATIDO EN ESTA SESIÓN (No reaparecerá hasta que se apague y encienda el server)");
+            } else if (cop != null && cop.isValid() && !cop.isDead()) {
+                sender.sendMessage(ChatColor.GREEN + "Estado: EN SERVICIO ACTIVO (Patrullando la zona)");
+                sender.sendMessage(ChatColor.YELLOW + "Ubicación: X=" + cop.getLocation().getBlockX() + ", Y=" + cop.getLocation().getBlockY() + ", Z=" + cop.getLocation().getBlockZ());
+                sender.sendMessage(ChatColor.AQUA + "Salud: " + (int) cop.getHealth() + " / " + (int) cop.getMaxHealth());
+            } else {
+                sender.sendMessage(ChatColor.YELLOW + "Estado: Esperando jugadores para entrar en servicio.");
+            }
+            return true;
+        }
+
         if (c.equals("online") || c.equals("jugadores") || c.equals("quien") || c.equals("conectados") || c.equals("onlineplayers")) {
             sendOnlinePlayersList(sender);
             return true;
@@ -1699,7 +1929,11 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 || c.equals("forajidos") || c.equals("topforajidos") || c.equals("outlaws") || c.equals("criminales")
                 || c.equals("heroes") || c.equals("topheroes")
                 || c.equals("infocofre") || c.equals("vercofre") || c.equals("cofreinfo")
-                || c.equals("online") || c.equals("jugadores") || c.equals("quien") || c.equals("conectados") || c.equals("onlineplayers");
+                || c.equals("online") || c.equals("jugadores") || c.equals("quien") || c.equals("conectados") || c.equals("onlineplayers")
+                || c.equals("mascota") || c.equals("protegermascota") || c.equals("nombrarmascota") || c.equals("setmascota") || c.equals("pet")
+                || c.equals("listamascotas") || c.equals("vermascotas") || c.equals("pets")
+                || c.equals("liberarmascota") || c.equals("desregistrarmascota")
+                || c.equals("policia") || c.equals("police") || c.equals("cop") || c.equals("agentetorres");
 
         if (!isPublicCmd && !isOwner(sender)) {
             sender.sendMessage(ChatColor.RED + "Solo Xavi o la Consola de Control pueden usar este comando.");

@@ -1,0 +1,11 @@
+pets:
+  josefa:
+    uuid: ''
+    name: Josefa
+    owner: Xavi
+    type: SHEEP
+    world: world
+    x: -269.5
+    y: 76.0
+    z: -2.5
+    claimedDate: 01/11/2026 18:00:00
