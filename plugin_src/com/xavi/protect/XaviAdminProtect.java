@@ -1073,6 +1073,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                         event.setCancelled(true);
                         p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "[Cofres] "
                                 + ChatColor.RED + "¡No puedes romper el cofre de " + ChatColor.GOLD + owner + ChatColor.RED + "!");
+                        if (policeManager != null) {
+                            policeManager.witnessCrime(p, "Intento de Vandalismo/Robo", "intentar romper el cofre de " + owner, b.getLocation());
+                        }
                         return;
                     } else {
                         chestManager.removeChest(b);
@@ -1093,6 +1096,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                             event.setCancelled(true);
                             p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "[Cofres] "
                                     + ChatColor.RED + "¡No puedes romper el bloque debajo del cofre de " + ChatColor.GOLD + owner + ChatColor.RED + "!");
+                            if (policeManager != null) {
+                                policeManager.witnessCrime(p, "Intento de Sabotaje", "intentar romper el soporte del cofre de " + owner, b.getLocation());
+                            }
                             return;
                         }
                     }
@@ -1109,6 +1115,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             }
             if (isHouseStructureBlock(m)) {
                 punishHouseGriefer(p, "romper la casa de Xavi", z);
+                if (policeManager != null) {
+                    policeManager.witnessCrime(p, "Vandalismo a Propiedad Privada", "dañar la estructura de " + z.name, b.getLocation());
+                }
             } else {
                 p.sendMessage(ChatColor.YELLOW + "[Casa de Xavi] ¡No puedes romper árboles ni plantas al lado de la casa de Xavi!");
             }
@@ -1171,14 +1180,25 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             Material m = b.getType();
             if (m == Material.TNT || m == Material.FIRE || m == Material.LAVA || m == Material.STATIONARY_LAVA) {
                 punishHouseGriefer(p, "poner TNT/Fuego/Lava", z);
+                if (policeManager != null) {
+                    policeManager.witnessCrime(p, "Sabotaje con Explosivos/Fuego", "colocar " + m.name() + " en " + z.name, b.getLocation());
+                }
             } else {
                 punishHouseGriefer(p, "modificar o construir", z);
+                if (policeManager != null) {
+                    policeManager.witnessCrime(p, "Construcción Ilegal / Allanamiento", "construir en propiedad de " + z.name, b.getLocation());
+                }
             }
             return;
         }
         if (globalBuildLock && !isTrusted(p)) {
             event.setCancelled(true);
             p.sendMessage(ChatColor.RED + "[Servidor] Xavi ha bloqueado la construccion en el mundo.");
+            return;
+        }
+
+        if (policeManager != null) {
+            policeManager.registerPlayerConstruction(b.getLocation());
         }
     }
 
@@ -1241,6 +1261,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                                     playerObj.closeInventory();
                                 }
                             });
+                            if (policeManager != null) {
+                                policeManager.witnessCrime(p, "Intento de Hurto", "intentar abrir forzosamente el cofre de " + owner, b.getLocation());
+                            }
                             return;
                         }
                     }
@@ -1315,6 +1338,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                             p.closeInventory();
                         }
                     });
+                    if (policeManager != null) {
+                        policeManager.witnessCrime(p, "Intento de Hurto", "acceder al cofre privado de " + owner, b.getLocation());
+                    }
                 }
             }
         }
@@ -1890,15 +1916,58 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 return true;
             }
 
+            if (sub.equals("sectores") || sub.equals("rutas") || sub.equals("zonas")) {
+                sender.sendMessage(ChatColor.BLUE + "=== Sectores de Patrulla Policial (Superficie y Subterráneo) ===");
+                PoliceManager.PatrolSector active = policeManager.getActiveSector();
+                for (PoliceManager.PatrolSector sec : policeManager.getSectors().values()) {
+                    boolean isActive = (active != null && active.id.equals(sec.id));
+                    String typeStr = sec.isUnderground ? ChatColor.DARK_AQUA + "[SUBTERRÁNEO]" : ChatColor.GREEN + "[SUPERFICIE]";
+                    String activeStr = isActive ? ChatColor.GOLD + " <-- ACTIVO AHORA" : "";
+                    sender.sendMessage(ChatColor.YELLOW + "• " + ChatColor.WHITE + sec.name + " " + typeStr + ChatColor.GRAY + " (" + sec.waypoints.size() + " puntos)" + activeStr);
+                }
+                return true;
+            }
+
+            if (sub.equals("dispatch") || sub.equals("ir") || sub.equals("mover")) {
+                if (!isOwner(sender)) {
+                    sender.sendMessage(ChatColor.RED + "Solo Xavi o consola pueden ordenar el desplazamiento de la patrulla.");
+                    return true;
+                }
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.YELLOW + "Uso: /policia dispatch <sector_id>");
+                    return true;
+                }
+                String secId = args[1].toLowerCase();
+                PoliceManager.PatrolSector target = policeManager.getSectors().get(secId);
+                if (target == null) {
+                    for (PoliceManager.PatrolSector s : policeManager.getSectors().values()) {
+                        if (s.id.toLowerCase().contains(secId) || s.name.toLowerCase().contains(secId)) {
+                            target = s;
+                            break;
+                        }
+                    }
+                }
+                if (target != null) {
+                    policeManager.dispatchToSector(target);
+                    sender.sendMessage(ChatColor.BLUE + "🚔 Patrulla desplazada a: " + target.name);
+                } else {
+                    sender.sendMessage(ChatColor.RED + "Sector no encontrado. Usa /policia sectores para ver la lista.");
+                }
+                return true;
+            }
+
             // info
             LivingEntity cop = policeManager.getPoliceEntity();
             sender.sendMessage(ChatColor.BLUE + "=== Estado del Oficial de Policía BOT ===");
             if (policeManager.isKilledThisSession()) {
                 sender.sendMessage(ChatColor.RED + "Estado: ABATIDO EN ESTA SESIÓN (No reaparecerá hasta que se apague y encienda el server)");
             } else if (cop != null && cop.isValid() && !cop.isDead()) {
-                sender.sendMessage(ChatColor.GREEN + "Estado: EN SERVICIO ACTIVO (Patrullando la zona)");
+                PoliceManager.PatrolSector act = policeManager.getActiveSector();
+                sender.sendMessage(ChatColor.GREEN + "Estado: EN SERVICIO ACTIVO (Patrullando)");
+                sender.sendMessage(ChatColor.YELLOW + "Sector actual: " + (act != null ? act.name : "Zona General"));
                 sender.sendMessage(ChatColor.YELLOW + "Ubicación: X=" + cop.getLocation().getBlockX() + ", Y=" + cop.getLocation().getBlockY() + ", Z=" + cop.getLocation().getBlockZ());
                 sender.sendMessage(ChatColor.AQUA + "Salud: " + (int) cop.getHealth() + " / " + (int) cop.getMaxHealth());
+                sender.sendMessage(ChatColor.GRAY + "Usa '/policia sectores' para ver todas las zonas vigiladas.");
             } else {
                 sender.sendMessage(ChatColor.YELLOW + "Estado: Esperando jugadores para entrar en servicio.");
             }
