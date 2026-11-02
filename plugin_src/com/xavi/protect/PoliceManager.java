@@ -4,11 +4,13 @@ import net.minecraft.server.v1_8_R3.EntityCreature;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
+import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftCreature;
 import org.bukkit.entity.Creature;
 import org.bukkit.entity.Entity;
@@ -171,7 +173,7 @@ public class PoliceManager {
                     lastBy = by;
                     lastBz = bz;
                     Block b = w.getBlockAt(bx, by, bz);
-                    if (b != null && isVisionBlocking(b.getType())) {
+                    if (b != null && isVisionBlocking(b)) {
                         return false;
                     }
                 }
@@ -179,12 +181,16 @@ public class PoliceManager {
             return true;
         }
 
-        private static boolean isVisionBlocking(Material m) {
+        private static boolean isVisionBlocking(Block b) {
+            if (b == null) return false;
+            Material m = b.getType();
             if (m == null || m == Material.AIR) return false;
             if (m == Material.GLASS || m == Material.THIN_GLASS || m == Material.STAINED_GLASS || m == Material.STAINED_GLASS_PANE) return false;
-            if (m == Material.FENCE || m == Material.FENCE_GATE || m == Material.IRON_FENCE || m == Material.NETHER_FENCE) return false;
+            if (m == Material.FENCE || m == Material.IRON_FENCE || m == Material.NETHER_FENCE) return false;
             if (m == Material.TORCH || m == Material.WATER || m == Material.STATIONARY_WATER) return false;
             if (m == Material.SIGN_POST || m == Material.WALL_SIGN || m == Material.CARPET || m == Material.LADDER) return false;
+            // Puertas y vallas abiertas no bloquean la visión policial
+            if (isDoorBlock(b) && isDoorOpen(b)) return false;
             return m.isOccluding() || m.isSolid();
         }
     }
@@ -193,6 +199,8 @@ public class PoliceManager {
     private final Map<String, PoliceOfficer> officers = new LinkedHashMap<String, PoliceOfficer>();
     private final Map<String, PatrolSector> sectors = new LinkedHashMap<String, PatrolSector>();
     private int patrolTaskId = -1;
+    private int doorCheckTaskId = -1;
+    private final Map<Location, Long> activePoliceDoors = new LinkedHashMap<Location, Long>();
     private final Random random = new Random();
     private final Map<String, Integer> playerAccidentalHits = new LinkedHashMap<String, Integer>();
     private final Map<String, Long> lastHitTimestamp = new LinkedHashMap<String, Long>();
@@ -499,6 +507,14 @@ public class PoliceManager {
                     ((java.util.List<?>) FIELD_TARGET_B.get(nms.targetSelector)).clear();
                     ((java.util.List<?>) FIELD_TARGET_C.get(nms.targetSelector)).clear();
                 }
+
+                // Habilitar paso a través de puertas en la navegación y apertura automática
+                if (nms.getNavigation() instanceof net.minecraft.server.v1_8_R3.Navigation) {
+                    net.minecraft.server.v1_8_R3.Navigation nav = (net.minecraft.server.v1_8_R3.Navigation) nms.getNavigation();
+                    nav.a(true); // canPassOpenDoors
+                    nav.b(true); // canOpenDoors (incluye puertas cerradas en su cálculo de rutas)
+                }
+                nms.goalSelector.a(2, new net.minecraft.server.v1_8_R3.PathfinderGoalOpenDoor(nms, true));
             }
         } catch (Exception ignored) {}
 
@@ -507,6 +523,17 @@ public class PoliceManager {
     }
 
     public void removePolice() {
+        if (doorCheckTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(doorCheckTaskId);
+            doorCheckTaskId = -1;
+        }
+
+        // Cerrar limpiamente cualquier puerta que hubiera quedado abierta
+        for (Location loc : activePoliceDoors.keySet()) {
+            closeDoor(loc.getBlock());
+        }
+        activePoliceDoors.clear();
+
         for (PoliceOfficer off : officers.values()) {
             if (off.entity != null) {
                 try {
@@ -533,6 +560,17 @@ public class PoliceManager {
         if (patrolTaskId != -1) {
             Bukkit.getScheduler().cancelTask(patrolTaskId);
         }
+        if (doorCheckTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(doorCheckTaskId);
+        }
+
+        // Tarea rápida de gestión de puertas: cada 0.5s revisa si los policías tienen puertas delante
+        doorCheckTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                checkAndManagePoliceDoors();
+            }
+        }, 10L, 10L);
 
         patrolTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
             @Override
@@ -1018,5 +1056,127 @@ public class PoliceManager {
     public PatrolSector getActiveSector() {
         PoliceOfficer torres = officers.get("torres");
         return torres != null ? torres.activeSector : null;
+    }
+
+    public void checkAndManagePoliceDoors() {
+        if (Bukkit.getOnlinePlayers().isEmpty()) return;
+
+        long now = System.currentTimeMillis();
+
+        // 1. Detección y apertura automática de puertas frente a cada policía activo
+        for (PoliceOfficer off : officers.values()) {
+            if (off.killedThisSession || off.entity == null || off.entity.isDead()) continue;
+            if (!off.isChunkLoaded()) continue;
+
+            Location pLoc = off.entity.getLocation();
+            World w = pLoc.getWorld();
+            int px = pLoc.getBlockX();
+            int py = pLoc.getBlockY();
+            int pz = pLoc.getBlockZ();
+
+            // Escanear área inmediata en un radio de 1.8 bloques
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    for (int dy = 0; dy <= 1; dy++) {
+                        Block b = w.getBlockAt(px + dx, py + dy, pz + dz);
+                        if (isDoorBlock(b)) {
+                            Block master = getMasterDoorBlock(b);
+                            if (!isDoorOpen(master)) {
+                                openDoor(master);
+                            }
+                            // Mantener la puerta abierta mientras el agente esté cerca + 3.5 segundos tras cruzar
+                            activePoliceDoors.put(master.getLocation(), now + 3500L);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Cierre educado de puertas tras cruzar (no dejar puertas abiertas)
+        if (!activePoliceDoors.isEmpty()) {
+            List<Location> toClose = new ArrayList<Location>();
+            for (Map.Entry<Location, Long> entry : activePoliceDoors.entrySet()) {
+                Location loc = entry.getKey();
+                if (now >= entry.getValue()) {
+                    boolean occupied = false;
+                    World w = loc.getWorld();
+                    if (w != null && w.isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) {
+                        for (Entity e : w.getNearbyEntities(loc, 1.8, 1.8, 1.8)) {
+                            if (e instanceof Player || isPolice(e)) {
+                                occupied = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (occupied) {
+                        entry.setValue(now + 1500L);
+                    } else {
+                        toClose.add(loc);
+                    }
+                }
+            }
+
+            for (Location loc : toClose) {
+                activePoliceDoors.remove(loc);
+                Block b = loc.getBlock();
+                if (isDoorBlock(b) && isDoorOpen(b)) {
+                    closeDoor(b);
+                }
+            }
+        }
+    }
+
+    public static boolean isDoorBlock(Block b) {
+        if (b == null) return false;
+        Material m = b.getType();
+        return m == Material.WOODEN_DOOR || m == Material.IRON_DOOR_BLOCK
+                || m == Material.SPRUCE_DOOR || m == Material.BIRCH_DOOR
+                || m == Material.JUNGLE_DOOR || m == Material.ACACIA_DOOR
+                || m == Material.DARK_OAK_DOOR || m == Material.TRAP_DOOR
+                || m == Material.IRON_TRAPDOOR || m == Material.FENCE_GATE
+                || m == Material.SPRUCE_FENCE_GATE || m == Material.BIRCH_FENCE_GATE
+                || m == Material.JUNGLE_FENCE_GATE || m == Material.DARK_OAK_FENCE_GATE
+                || m == Material.ACACIA_FENCE_GATE;
+    }
+
+    public static Block getMasterDoorBlock(Block b) {
+        if (b == null) return null;
+        Material m = b.getType();
+        if (m == Material.WOODEN_DOOR || m == Material.IRON_DOOR_BLOCK
+                || m == Material.SPRUCE_DOOR || m == Material.BIRCH_DOOR
+                || m == Material.JUNGLE_DOOR || m == Material.ACACIA_DOOR
+                || m == Material.DARK_OAK_DOOR) {
+            byte data = b.getData();
+            if ((data & 0x8) != 0) {
+                return b.getRelative(BlockFace.DOWN);
+            }
+        }
+        return b;
+    }
+
+    public static boolean isDoorOpen(Block b) {
+        if (b == null) return false;
+        Block master = getMasterDoorBlock(b);
+        return (master.getData() & 0x4) != 0;
+    }
+
+    public static void openDoor(Block b) {
+        if (b == null) return;
+        Block master = getMasterDoorBlock(b);
+        byte current = master.getData();
+        if ((current & 0x4) == 0) {
+            master.setData((byte) (current | 0x4), true);
+            master.getWorld().playEffect(master.getLocation(), Effect.DOOR_TOGGLE, 0);
+        }
+    }
+
+    public static void closeDoor(Block b) {
+        if (b == null) return;
+        Block master = getMasterDoorBlock(b);
+        byte current = master.getData();
+        if ((current & 0x4) != 0) {
+            master.setData((byte) (current & ~0x4), true);
+            master.getWorld().playEffect(master.getLocation(), Effect.DOOR_TOGGLE, 0);
+        }
     }
 }
