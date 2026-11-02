@@ -783,7 +783,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 }
             }
             if (copAttacker != null) {
-                policeManager.handleAttackOnPolice(copAttacker);
+                policeManager.handleAttackOnPolice(event.getEntity(), copAttacker);
                 return;
             }
         }
@@ -903,7 +903,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDeath(EntityDeathEvent event) {
         if (policeManager != null && policeManager.isPolice(event.getEntity())) {
-            policeManager.handlePoliceDeath();
+            policeManager.handlePoliceDeath(event.getEntity());
             return;
         }
 
@@ -1199,6 +1199,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
         if (policeManager != null) {
             policeManager.registerPlayerConstruction(b.getLocation());
+            if (b.getType() == Material.TORCH && b.getY() < 63) {
+                policeManager.registerTorch(b.getLocation());
+            }
         }
     }
 
@@ -1873,8 +1876,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             return true;
         }
 
-        // ================= COMANDOS DEL POLICÍA IA =================
-        if (c.equals("policia") || c.equals("police") || c.equals("cop") || c.equals("agentetorres")) {
+        // ================= COMANDOS DEL CUERPO DE POLICÍA IA =================
+        if (c.equals("policia") || c.equals("police") || c.equals("cop") || c.equals("agentetorres") || c.equals("policias")) {
             if (policeManager == null) {
                 sender.sendMessage(ChatColor.RED + "Gestor de policía no inicializado.");
                 return true;
@@ -1883,47 +1886,66 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
             if (sub.equals("spawn") || sub.equals("generar")) {
                 if (!isOwner(sender)) {
-                    sender.sendMessage(ChatColor.RED + "Solo Xavi o consola pueden reaparecer al policía manualmente.");
+                    sender.sendMessage(ChatColor.RED + "Solo Xavi o consola pueden reaparecer a la dotación de policía.");
                     return true;
                 }
                 policeManager.setKilledThisSession(false);
                 policeManager.spawnPolice();
-                sender.sendMessage(ChatColor.BLUE + "🚔 Oficial de policía desplegado en servicio.");
+                sender.sendMessage(ChatColor.BLUE + "🚔 Dotación de 5 agentes de policía desplegada en servicio.");
                 return true;
             }
 
             if (sub.equals("revivir") || sub.equals("revive")) {
                 if (!isOwner(sender)) {
-                    sender.sendMessage(ChatColor.RED + "Solo Xavi o consola pueden revivir al policía.");
+                    sender.sendMessage(ChatColor.RED + "Solo Xavi o consola pueden revivir a los agentes.");
                     return true;
                 }
-                policeManager.setKilledThisSession(false);
-                policeManager.spawnPolice();
-                sender.sendMessage(ChatColor.BLUE + "🚔 Oficial de policía revivido y patrullando.");
+                if (args.length > 1) {
+                    PoliceManager.PoliceOfficer off = policeManager.getOfficer(args[1]);
+                    if (off != null) {
+                        off.killedThisSession = false;
+                        policeManager.spawnPolice();
+                        sender.sendMessage(ChatColor.BLUE + "🚔 " + off.name + " revivido y asignado a su patrulla.");
+                    } else {
+                        sender.sendMessage(ChatColor.RED + "Agente no encontrado: " + args[1]);
+                    }
+                } else {
+                    policeManager.setKilledThisSession(false);
+                    policeManager.spawnPolice();
+                    sender.sendMessage(ChatColor.BLUE + "🚔 Todos los agentes de policía han sido revividos y patrullan la zona.");
+                }
                 return true;
             }
 
             if (sub.equals("tp")) {
                 if (!(sender instanceof Player)) return true;
                 Player p = (Player) sender;
-                LivingEntity cop = policeManager.getPoliceEntity();
-                if (cop != null) {
-                    p.teleport(cop.getLocation());
-                    p.sendMessage(ChatColor.BLUE + "🚔 Te has teletransportado al Oficial de Policía.");
+                PoliceManager.PoliceOfficer targetOff = null;
+                if (args.length > 1) {
+                    targetOff = policeManager.getOfficer(args[1]);
+                }
+                if (targetOff == null) {
+                    for (PoliceManager.PoliceOfficer o : policeManager.getOfficers().values()) {
+                        if (o.isAlive()) {
+                            targetOff = o;
+                            break;
+                        }
+                    }
+                }
+                if (targetOff != null && targetOff.isAlive()) {
+                    p.teleport(targetOff.entity.getLocation());
+                    p.sendMessage(ChatColor.BLUE + "🚔 Teletransportado al " + targetOff.name + " (" + targetOff.rank + ").");
                 } else {
-                    p.sendMessage(ChatColor.RED + "El oficial de policía no está en el mundo en este momento.");
+                    p.sendMessage(ChatColor.RED + "El agente solicitado no se encuentra en servicio actualmente.");
                 }
                 return true;
             }
 
             if (sub.equals("sectores") || sub.equals("rutas") || sub.equals("zonas")) {
-                sender.sendMessage(ChatColor.BLUE + "=== Sectores de Patrulla Policial (Superficie y Subterráneo) ===");
-                PoliceManager.PatrolSector active = policeManager.getActiveSector();
+                sender.sendMessage(ChatColor.BLUE + "=== Sectores de Patrulla Policial (Superficie, Casas, Cuevas y Minas) ===");
                 for (PoliceManager.PatrolSector sec : policeManager.getSectors().values()) {
-                    boolean isActive = (active != null && active.id.equals(sec.id));
                     String typeStr = sec.isUnderground ? ChatColor.DARK_AQUA + "[SUBTERRÁNEO]" : ChatColor.GREEN + "[SUPERFICIE]";
-                    String activeStr = isActive ? ChatColor.GOLD + " <-- ACTIVO AHORA" : "";
-                    sender.sendMessage(ChatColor.YELLOW + "• " + ChatColor.WHITE + sec.name + " " + typeStr + ChatColor.GRAY + " (" + sec.waypoints.size() + " puntos)" + activeStr);
+                    sender.sendMessage(ChatColor.YELLOW + "• " + ChatColor.WHITE + sec.name + " " + typeStr + ChatColor.GRAY + " (" + sec.waypoints.size() + " puntos)");
                 }
                 return true;
             }
@@ -1934,43 +1956,64 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                     return true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage(ChatColor.YELLOW + "Uso: /policia dispatch <sector_id>");
+                    sender.sendMessage(ChatColor.YELLOW + "Uso: /policia dispatch <sector_id>  o  /policia dispatch <agente> <sector_id>");
                     return true;
                 }
-                String secId = args[1].toLowerCase();
-                PoliceManager.PatrolSector target = policeManager.getSectors().get(secId);
-                if (target == null) {
+                PoliceManager.PoliceOfficer targetOff = null;
+                String secId = null;
+                if (args.length >= 3) {
+                    targetOff = policeManager.getOfficer(args[1]);
+                    secId = args[2].toLowerCase();
+                } else {
+                    secId = args[1].toLowerCase();
+                }
+
+                PoliceManager.PatrolSector targetSec = policeManager.getSectors().get(secId);
+                if (targetSec == null) {
                     for (PoliceManager.PatrolSector s : policeManager.getSectors().values()) {
                         if (s.id.toLowerCase().contains(secId) || s.name.toLowerCase().contains(secId)) {
-                            target = s;
+                            targetSec = s;
                             break;
                         }
                     }
                 }
-                if (target != null) {
-                    policeManager.dispatchToSector(target);
-                    sender.sendMessage(ChatColor.BLUE + "🚔 Patrulla desplazada a: " + target.name);
+                if (targetSec != null) {
+                    if (targetOff != null) {
+                        policeManager.dispatchOfficerToSector(targetOff, targetSec);
+                        sender.sendMessage(ChatColor.BLUE + "🚔 " + targetOff.name + " desplazado a patrullar: " + targetSec.name);
+                    } else {
+                        policeManager.dispatchToSector(targetSec);
+                        sender.sendMessage(ChatColor.BLUE + "🚔 Patrulla desplazada a: " + targetSec.name);
+                    }
                 } else {
-                    sender.sendMessage(ChatColor.RED + "Sector no encontrado. Usa /policia sectores para ver la lista.");
+                    sender.sendMessage(ChatColor.RED + "Sector no encontrado. Usa '/policia sectores' para ver las rutas.");
                 }
                 return true;
             }
 
-            // info
-            LivingEntity cop = policeManager.getPoliceEntity();
-            sender.sendMessage(ChatColor.BLUE + "=== Estado del Oficial de Policía BOT ===");
-            if (policeManager.isKilledThisSession()) {
-                sender.sendMessage(ChatColor.RED + "Estado: ABATIDO EN ESTA SESIÓN (No reaparecerá hasta que se apague y encienda el server)");
-            } else if (cop != null && cop.isValid() && !cop.isDead()) {
-                PoliceManager.PatrolSector act = policeManager.getActiveSector();
-                sender.sendMessage(ChatColor.GREEN + "Estado: EN SERVICIO ACTIVO (Patrullando)");
-                sender.sendMessage(ChatColor.YELLOW + "Sector actual: " + (act != null ? act.name : "Zona General"));
-                sender.sendMessage(ChatColor.YELLOW + "Ubicación: X=" + cop.getLocation().getBlockX() + ", Y=" + cop.getLocation().getBlockY() + ", Z=" + cop.getLocation().getBlockZ());
-                sender.sendMessage(ChatColor.AQUA + "Salud: " + (int) cop.getHealth() + " / " + (int) cop.getMaxHealth());
-                sender.sendMessage(ChatColor.GRAY + "Usa '/policia sectores' para ver todas las zonas vigiladas.");
-            } else {
-                sender.sendMessage(ChatColor.YELLOW + "Estado: Esperando jugadores para entrar en servicio.");
+            // info - Cuadro general de la dotación de 5 policías
+            sender.sendMessage(ChatColor.BLUE + "═════════ [CUERPO DE POLICÍA NACIONAL IA] ═════════");
+            sender.sendMessage(ChatColor.GRAY + "Dotación policial activa protegiendo la superficie, casas, cuevas y minas:");
+            int aliveCount = 0;
+            for (PoliceManager.PoliceOfficer off : policeManager.getOfficers().values()) {
+                if (off.isAlive()) aliveCount++;
+                String statusStr = off.killedThisSession
+                        ? ChatColor.RED + "[ABATIDO EN ESTA SESIÓN]"
+                        : (off.isAlive()
+                                ? ChatColor.GREEN + "[EN SERVICIO]"
+                                : ChatColor.YELLOW + "[RESPAWNEANDO]");
+
+                String locStr = off.isAlive()
+                        ? (" X=" + off.entity.getLocation().getBlockX() + " Y=" + off.entity.getLocation().getBlockY() + " Z=" + off.entity.getLocation().getBlockZ())
+                        : " Desconectado";
+
+                String healthStr = off.isAlive() ? (ChatColor.AQUA + " (" + (int) off.entity.getHealth() + " HP)") : "";
+
+                sender.sendMessage(ChatColor.GOLD + "• " + ChatColor.AQUA + off.name + ChatColor.GRAY + " (" + off.rank + ") " + statusStr + healthStr);
+                sender.sendMessage(ChatColor.DARK_GRAY + "   Asignación: " + ChatColor.YELLOW + off.assignment + ChatColor.WHITE + locStr);
             }
+            sender.sendMessage(ChatColor.BLUE + "════════════════════════════════════════════════════");
+            sender.sendMessage(ChatColor.GRAY + "Comandos: /policia sectores | /policia tp <agente> | /policia dispatch");
             return true;
         }
 
