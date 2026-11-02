@@ -145,6 +145,8 @@ public class PoliceManager {
     private final Map<String, PatrolSector> sectors = new LinkedHashMap<String, PatrolSector>();
     private int patrolTaskId = -1;
     private final Random random = new Random();
+    private final Map<String, Integer> playerAccidentalHits = new LinkedHashMap<String, Integer>();
+    private final Map<String, Long> lastHitTimestamp = new LinkedHashMap<String, Long>();
 
     public PoliceManager(XaviAdminProtect plugin) {
         this.plugin = plugin;
@@ -428,7 +430,18 @@ public class PoliceManager {
 
         try {
             if (cop instanceof CraftCreature) {
-                ((CraftCreature) cop).getHandle().getAttributeInstance(net.minecraft.server.v1_8_R3.GenericAttributes.MOVEMENT_SPEED).setValue(0.35D);
+                net.minecraft.server.v1_8_R3.EntityInsentient nms = ((CraftCreature) cop).getHandle();
+                nms.getAttributeInstance(net.minecraft.server.v1_8_R3.GenericAttributes.MOVEMENT_SPEED).setValue(0.35D);
+
+                // Desactivar completamente la agresividad hostil del zombi hacia los jugadores
+                java.lang.reflect.Field bField = net.minecraft.server.v1_8_R3.PathfinderGoalSelector.class.getDeclaredField("b");
+                bField.setAccessible(true);
+                java.util.List<?> targetB = (java.util.List<?>) bField.get(nms.targetSelector);
+                targetB.clear();
+                java.lang.reflect.Field cField = net.minecraft.server.v1_8_R3.PathfinderGoalSelector.class.getDeclaredField("c");
+                cField.setAccessible(true);
+                java.util.List<?> targetC = (java.util.List<?>) cField.get(nms.targetSelector);
+                targetC.clear();
             }
         } catch (Exception ignored) {}
 
@@ -463,15 +476,9 @@ public class PoliceManager {
                         continue;
                     }
 
-                    // Evitar aggro automático a jugadores pacíficos
+                    // Los policías son pacíficos y nunca toman de objetivo a inocentes
                     if (off.entity instanceof Creature) {
-                        Creature cr = (Creature) off.entity;
-                        if (cr.getTarget() instanceof Player) {
-                            Player tp = (Player) cr.getTarget();
-                            if (!tp.isOnline() || tp.isDead()) {
-                                cr.setTarget(null);
-                            }
-                        }
+                        ((Creature) off.entity).setTarget(null);
                     }
 
                     off.ticksInCurrentSector += 4;
@@ -517,48 +524,23 @@ public class PoliceManager {
             }
         }
 
-        // 2. INSPECCIÓN DE SOSPECHOSOS EN EL CAMPO VISUAL
-        Player suspect = null;
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (p.getWorld().equals(pLoc.getWorld())) {
-                double dist = p.getLocation().distance(pLoc);
-                if (dist < 18.0 && off.canSee(p.getEyeLocation())) {
-                    // Sigilo cerca de propiedades
-                    if (p.isSneaking()) {
-                        suspect = p;
-                        break;
-                    }
-                    // Armas desenfundadas en zonas habitadas
-                    ItemStack hand = p.getItemInHand();
-                    if (hand != null && (hand.getType().name().contains("SWORD") || hand.getType().name().contains("AXE") || hand.getType() == Material.BOW)) {
-                        if (dist < 9.0 && random.nextDouble() < 0.25 && off.suspicionCooldown <= 0) {
-                            p.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "Por favor " + p.getName() + ", envaina tu arma mientras estés en zona habitada.");
-                            p.playSound(p.getLocation(), Sound.NOTE_PLING, 1.0f, 2.0f);
-                            off.suspicionCooldown = 20;
-                        }
-                    }
+        // 2. ACTITUD COMPRENSIVA, TOLERANTE Y AMABLE CON CIUDADANOS PACÍFICOS
+        if (off.suspicionCooldown <= 0 && random.nextDouble() < 0.10) {
+            for (Entity e : off.entity.getNearbyEntities(8, 3, 8)) {
+                if (e instanceof Player) {
+                    Player p = (Player) e;
+                    String[] friendlyMessages = new String[] {
+                        "Buenas, " + p.getName() + ". Circule con tranquilidad, la zona está vigilada.",
+                        "Saludos, ciudadano. Buen trabajo de minería y construcción.",
+                        "Todo despejado por aquí, " + p.getName() + ". Buen día.",
+                        "Patrullando la zona para vuestra seguridad. Que tengáis buena jornada."
+                    };
+                    String msg = friendlyMessages[random.nextInt(friendlyMessages.length)];
+                    p.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.GRAY + msg);
+                    off.suspicionCooldown = 30;
+                    break;
                 }
             }
-        }
-
-        // Si hay sospechoso en sigilo, el agente se acerca a interrogarlo
-        if (suspect != null && off.suspicionCooldown <= 0) {
-            Location sLoc = suspect.getLocation();
-            Vector toSuspect = sLoc.toVector().subtract(pLoc.toVector()).normalize().multiply(3.0);
-            double destX = sLoc.getX() - toSuspect.getX();
-            double destY = sLoc.getY();
-            double destZ = sLoc.getZ() - toSuspect.getZ();
-
-            try {
-                if (off.entity instanceof CraftCreature) {
-                    ((CraftCreature) off.entity).getHandle().getNavigation().a(destX, destY, destZ, 1.50);
-                }
-            } catch (Exception ignored) {}
-
-            suspect.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¿Qué haces en sigilo por aquí, " + suspect.getName() + "? Mantén la compostura.");
-            suspect.playSound(suspect.getLocation(), Sound.NOTE_PLING, 1.0f, 2.0f);
-            off.suspicionCooldown = 18;
-            return;
         }
 
         // 3. PATRULLA POR WAYPOINTS DEL SECTOR ACTIVO DEL OFICIAL
@@ -642,28 +624,39 @@ public class PoliceManager {
             return;
         }
 
-        // Golpe de frente visto por el policía
-        off.entity.getWorld().playSound(off.entity.getLocation(), Sound.NOTE_PLING, 1.5f, 2.0f);
-        off.entity.getWorld().playSound(off.entity.getLocation(), Sound.ANVIL_LAND, 0.8f, 1.5f);
+        // Comprobación de tolerancia: Golpe accidental picando o talando
+        long now = System.currentTimeMillis();
+        long last = lastHitTimestamp.containsKey(attacker.getName().toLowerCase()) ? lastHitTimestamp.get(attacker.getName().toLowerCase()) : 0L;
+        int hits = (now - last < 10000L) ? (playerAccidentalHits.containsKey(attacker.getName().toLowerCase()) ? playerAccidentalHits.get(attacker.getName().toLowerCase()) : 0) : 0;
+        hits++;
+        playerAccidentalHits.put(attacker.getName().toLowerCase(), hits);
+        lastHitTimestamp.put(attacker.getName().toLowerCase(), now);
 
         Vector toAttacker = attacker.getLocation().toVector().subtract(off.entity.getLocation().toVector());
         Location faceLoc = off.entity.getLocation().setDirection(toAttacker);
         off.entity.teleport(faceLoc);
 
-        if (off.entity instanceof Creature) {
-            ((Creature) off.entity).setTarget(attacker);
+        if (hits == 1) {
+            // Primer golpe: Totalmente comprensivo y tolerante (posible error de clic)
+            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Cuidado con esa herramienta, " + attacker.getName() + "! No pasa nada por un descuido, pero ten más ojo.");
+            attacker.playSound(attacker.getLocation(), Sound.NOTE_PLING, 1.0f, 1.6f);
+            return;
         }
 
-        // Táser reglamentario
-        attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 120, 2));
-        attacker.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 1));
-        attacker.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 120, 1));
+        if (hits == 2) {
+            // Segundo golpe cercano: Aviso preventivo amable pero firme
+            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "Por favor " + attacker.getName() + ", mantén la distancia con los agentes en servicio.");
+            attacker.playSound(attacker.getLocation(), Sound.NOTE_PLING, 1.0f, 1.2f);
+            return;
+        }
 
-        Bukkit.broadcastMessage(ChatColor.DARK_BLUE + "══════════════════════════════════════════════════");
-        Bukkit.broadcastMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.RED + "¡ALTO! ¡Agresión directa a un agente cometida por " + ChatColor.YELLOW + attacker.getName() + ChatColor.RED + "!");
-        Bukkit.broadcastMessage(ChatColor.DARK_BLUE + "══════════════════════════════════════════════════");
+        // A partir de 3 golpes continuados: se considera agresión reiterada
+        off.entity.getWorld().playSound(off.entity.getLocation(), Sound.NOTE_PLING, 1.5f, 2.0f);
+        attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 0)); // Solo 3 segundos leves
 
-        applyPoliceSanction(off, attacker, "Agresión directa a un agente de policía");
+        Bukkit.broadcastMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Atención! " + attacker.getName() + " ha golpeado reiteradamente a un agente.");
+
+        applyPoliceSanction(off, attacker, "Golpear reiteradamente a un agente");
     }
 
     public void handleAttackOnPolice(Player attacker) {
@@ -754,12 +747,10 @@ public class PoliceManager {
         plugin.addWarning(culprit.getName(), "Visto por " + officer.name + ": " + reason, "Policía");
 
         if (warnCount == 1) {
-            culprit.sendMessage(ChatColor.GOLD + "🚔 [POLICÍA] Tienes 1 advertencia oficial. Si acumulas 4 serás expulsado o baneado del servidor.");
-            culprit.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 1));
+            culprit.sendMessage(ChatColor.GOLD + "🚔 [POLICÍA] Aviso informativo (1ª advertencia): Por favor respeta las normas de convivencia. No pasa nada grave, pero evitemos incidentes.");
         } else if (warnCount == 2) {
-            culprit.sendMessage(ChatColor.GOLD + "🚔 [POLICÍA] ¡SEGUNDA ADVERTENCIA! Quedas inmovilizado temporalmente por desacato.");
-            culprit.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 3));
-            culprit.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 1));
+            culprit.sendMessage(ChatColor.GOLD + "🚔 [POLICÍA] 2ª advertencia: Te pedimos colaboración, por favor evita reincidir para no ser expulsado del servidor.");
+            culprit.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 0));
         } else if (warnCount == 3) {
             Bukkit.broadcastMessage(ChatColor.GOLD + "🚔 [POLICÍA] ¡El jugador " + ChatColor.RED + culprit.getName() + ChatColor.GOLD + " ha sido EXPULSADO del servidor por reincidencia delictiva!");
             Bukkit.getScheduler().runTask(plugin, new Runnable() {

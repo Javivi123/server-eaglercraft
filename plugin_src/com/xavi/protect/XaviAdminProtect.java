@@ -45,6 +45,8 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
+import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
@@ -745,6 +747,22 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEntityTarget(EntityTargetLivingEntityEvent event) {
+        if (policeManager != null && policeManager.isPolice(event.getEntity())) {
+            event.setCancelled(true);
+            event.setTarget(null);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEntityTargetGeneral(EntityTargetEvent event) {
+        if (policeManager != null && policeManager.isPolice(event.getEntity())) {
+            event.setCancelled(true);
+            event.setTarget(null);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         if (policeManager != null && policeManager.isPolice(event.getEntity())) {
@@ -771,6 +789,20 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        // Los policías son comprensivos y profesionales: NUNCA dañan físicamente a jugadores ni les atacan
+        if (policeManager != null) {
+            if (policeManager.isPolice(event.getDamager())) {
+                event.setCancelled(true);
+                return;
+            }
+            if (event.getDamager() instanceof Projectile) {
+                Projectile pr = (Projectile) event.getDamager();
+                if (pr.getShooter() instanceof Entity && policeManager.isPolice((Entity) pr.getShooter())) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
         // Interceptación de ataque al policía (de frente o por la espalda)
         if (policeManager != null && policeManager.isPolice(event.getEntity())) {
             Player copAttacker = null;
