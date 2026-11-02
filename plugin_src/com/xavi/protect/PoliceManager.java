@@ -451,7 +451,7 @@ public class PoliceManager {
         boots.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.PROTECTION_FALL, 4);
         boots.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.DEPTH_STRIDER, 3);
         ItemMeta bMeta = boots.getItemMeta();
-        bMeta.setDisplayName(ChatColor.BLUE + "Botas Tácticas de Salto y Agilidad");
+        bMeta.setDisplayName(ChatColor.BLUE + "Botas de Patrulla Reglamentarias");
         boots.setItemMeta(bMeta);
         eq.setBoots(boots);
         eq.setBootsDropChance(0.0f);
@@ -465,14 +465,13 @@ public class PoliceManager {
         eq.setItemInHandDropChance(0.0f);
 
         cop.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 999999, 1, false, false));
-        cop.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 2, false, false)); // Speed III atlético
-        cop.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 999999, 1, false, false));  // Salto Boost II (parkour)
         cop.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 999999, 0, false, false));
 
         try {
             if (cop instanceof CraftCreature) {
                 net.minecraft.server.v1_8_R3.EntityInsentient nms = ((CraftCreature) cop).getHandle();
-                nms.getAttributeInstance(net.minecraft.server.v1_8_R3.GenericAttributes.MOVEMENT_SPEED).setValue(0.35D);
+                // Velocidad serena y realista de patrullaje a pie (0.24D, paso natural sin correr)
+                nms.getAttributeInstance(net.minecraft.server.v1_8_R3.GenericAttributes.MOVEMENT_SPEED).setValue(0.24D);
 
                 // Desactivar completamente la agresividad hostil del zombi hacia los jugadores mediante campos estáticos cacheados
                 if (FIELD_TARGET_B != null && FIELD_TARGET_C != null) {
@@ -535,7 +534,7 @@ public class PoliceManager {
                                         ((CraftCreature) off.entity).getHandle().getNavigation().a(
                                                 off.targetPlayer.getLocation().getX(),
                                                 off.targetPlayer.getLocation().getY(),
-                                                off.targetPlayer.getLocation().getZ(), 1.70);
+                                                off.targetPlayer.getLocation().getZ(), 1.20);
                                     }
                                 } catch (Exception ignored) {}
                                 if (dist <= 3.5) {
@@ -557,14 +556,45 @@ public class PoliceManager {
                     patrolOfficerStep(off);
                 }
             }
-        }, 40L, 50L); // Cada 2.5 segundos procesa ciclo de patrullaje ultrarrápido
+        }, 40L, 50L); // Cada 2.5 segundos procesa ciclo de patrullaje a pie
     }
 
     private void patrolOfficerStep(PoliceOfficer off) {
         if (!off.isAlive()) return;
         Location pLoc = off.entity.getLocation();
 
-        // 1. COMPORTAMIENTO ESPECÍFICO DEL AGENTE NAVARRO (Intervención Rápida cerca de jugadores activos)
+        // 1. SISTEMA ANTI-ESTORBO Y RESPETO DE ESPACIO PERSONAL
+        // Si hay ciudadanos pacíficos cerca, el policía NUNCA estorba: no bloquea puertas, minas ni pasillos
+        if (off.pursuitTicks <= 0) {
+            Player nearbyCitizen = null;
+            double citizenDist = Double.MAX_VALUE;
+            for (Entity e : off.entity.getNearbyEntities(3.5, 2.5, 3.5)) {
+                if (e instanceof Player) {
+                    Player p = (Player) e;
+                    double d = p.getLocation().distance(pLoc);
+                    if (d < citizenDist) {
+                        citizenDist = d;
+                        nearbyCitizen = p;
+                    }
+                }
+            }
+
+            if (nearbyCitizen != null) {
+                // Si el jugador está muy pegado (< 2.2 bloques, ej: pasando por una puerta o minando un bloque),
+                // el agente cede el paso amablemente y se aparta hacia atrás o a un lado
+                if (citizenDist < 2.2) {
+                    Vector stepAway = pLoc.toVector().subtract(nearbyCitizen.getLocation().toVector()).setY(0);
+                    if (stepAway.lengthSquared() > 0.01) {
+                        stepAway.normalize().multiply(0.20);
+                        off.entity.setVelocity(stepAway);
+                    }
+                }
+                // Pausar avance para no empujar al jugador ni interponerse en su línea de visión/trabajo
+                return;
+            }
+        }
+
+        // 2. COMPORTAMIENTO DEL AGENTE NAVARRO (Vigilancia Discreta de Perímetro, sin estorbar)
         if (off.id.equals("navarro")) {
             Player nearestPlayer = null;
             double nearestDist = Double.MAX_VALUE;
@@ -578,42 +608,50 @@ public class PoliceManager {
                 }
             }
             if (nearestPlayer != null) {
-                Location pTarget = nearestPlayer.getLocation();
-                if (nearestDist > 45.0) {
-                    // Desplazamiento táctico rápido si los jugadores están muy lejos
-                    Location safe = findSafeStandingLocation(pTarget.clone().add(random.nextInt(7) - 3, 0, random.nextInt(7) - 3));
+                // Mantener distancia prudencial de observación (12 a 20 bloques), NUNCA meterse encima
+                if (nearestDist < 12.0) {
+                    // Ya está en buena posición de vigilancia, no acercarse más para no estorbar
+                    return;
+                } else if (nearestDist > 65.0) {
+                    // Si los jugadores se fueron muy lejos, ubicarse en el perímetro exterior (a ~18 bloques)
+                    Location pLocTarget = nearestPlayer.getLocation();
+                    Location safe = findSafeStandingLocation(pLocTarget.clone().add(random.nextBoolean() ? 18 : -18, 0, random.nextBoolean() ? 18 : -18));
                     off.entity.teleport(safe);
-                    off.entity.getWorld().playSound(safe, Sound.NOTE_PLING, 1.0f, 2.0f);
-                } else if (nearestDist > 8.0) {
+                    return;
+                } else if (nearestDist > 16.0) {
+                    // Caminata tranquila y serena hacia el perímetro a paso normal
                     try {
                         if (off.entity instanceof CraftCreature) {
-                            ((CraftCreature) off.entity).getHandle().getNavigation().a(pTarget.getX(), pTarget.getY(), pTarget.getZ(), 1.65);
+                            ((CraftCreature) off.entity).getHandle().getNavigation().a(
+                                    nearestPlayer.getLocation().getX(),
+                                    nearestPlayer.getLocation().getY(),
+                                    nearestPlayer.getLocation().getZ(), 1.0);
                         }
                     } catch (Exception ignored) {}
+                    return;
                 }
             }
         }
 
-        // 2. ACTITUD COMPRENSIVA, TOLERANTE Y AMABLE CON CIUDADANOS PACÍFICOS
-        if (off.suspicionCooldown <= 0 && random.nextDouble() < 0.10) {
-            for (Entity e : off.entity.getNearbyEntities(8, 3, 8)) {
+        // 3. ACTITUD TRANQUILA Y RESPETUOSA CON CIUDADANOS PACÍFICOS (Muy sutil, sin spam)
+        if (off.suspicionCooldown <= 0 && random.nextDouble() < 0.02) {
+            for (Entity e : off.entity.getNearbyEntities(6, 2, 6)) {
                 if (e instanceof Player) {
                     Player p = (Player) e;
                     String[] friendlyMessages = new String[] {
-                        "Buenas, " + p.getName() + ". Circule con tranquilidad, la zona está vigilada.",
-                        "Saludos, ciudadano. Buen trabajo de minería y construcción.",
-                        "Todo despejado por aquí, " + p.getName() + ". Buen día.",
-                        "Patrullando la zona para vuestra seguridad. Que tengáis buena jornada."
+                        "Buenas, " + p.getName() + ". Circule con tranquilidad.",
+                        "Saludos, ciudadano. Buen día.",
+                        "Zona vigilada y en calma, " + p.getName() + "."
                     };
                     String msg = friendlyMessages[random.nextInt(friendlyMessages.length)];
                     p.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.GRAY + msg);
-                    off.suspicionCooldown = 30;
+                    off.suspicionCooldown = 80;
                     break;
                 }
             }
         }
 
-        // 3. PATRULLA POR WAYPOINTS DEL SECTOR ACTIVO DEL OFICIAL (con carga segura de chunks)
+        // 4. PATRULLA POR WAYPOINTS A PASO NORMAL Y SIN TELEPORTS BRUSCOS
         if (off.activeSector != null && !off.activeSector.waypoints.isEmpty()) {
             Location targetWp = off.activeSector.waypoints.get(off.waypointIndex);
             off.waypointIndex = (off.waypointIndex + 1) % off.activeSector.waypoints.size();
@@ -626,25 +664,16 @@ public class PoliceManager {
             }
 
             double distSq = pLoc.distanceSquared(targetWp);
-            if (distSq > 35.0 * 35.0 || Math.abs(pLoc.getBlockY() - targetWp.getBlockY()) > 10) {
+            // Solo teleportar si está desfasado a más de 70 bloques o en alturas imposibles (atascado en bedrock/vacío)
+            if (distSq > 70.0 * 70.0 || Math.abs(pLoc.getBlockY() - targetWp.getBlockY()) > 16) {
                 Location safe = findSafeStandingLocation(targetWp);
                 off.entity.teleport(safe);
             } else {
                 try {
                     if (off.entity instanceof CraftCreature) {
-                        ((CraftCreature) off.entity).getHandle().getNavigation().a(targetWp.getX(), targetWp.getY(), targetWp.getZ(), 1.40);
+                        ((CraftCreature) off.entity).getHandle().getNavigation().a(targetWp.getX(), targetWp.getY(), targetWp.getZ(), 1.0);
                     }
                 } catch (Exception ignored) {}
-            }
-        }
-
-        // Informe sutil de rutina (5% prob si hay gente cerca)
-        if (random.nextDouble() < 0.05) {
-            for (Entity e : off.entity.getNearbyEntities(12, 5, 12)) {
-                if (e instanceof Player) {
-                    ((Player) e).sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.GRAY + "Patrullando " + (off.activeSector != null ? off.activeSector.name : "sector asignado") + ". Sin incidentes.");
-                    break;
-                }
             }
         }
     }
@@ -853,7 +882,7 @@ public class PoliceManager {
 
         try {
             if (cop.entity instanceof CraftCreature) {
-                ((CraftCreature) cop.entity).getHandle().getNavigation().a(culprit.getLocation().getX(), culprit.getLocation().getY(), culprit.getLocation().getZ(), 1.75);
+                ((CraftCreature) cop.entity).getHandle().getNavigation().a(culprit.getLocation().getX(), culprit.getLocation().getY(), culprit.getLocation().getZ(), 1.20);
             }
         } catch (Exception ignored) {}
 
