@@ -339,17 +339,19 @@ public class PoliceManager {
         cuevas.addWaypoint(new Location(w, -252.5, 61.0, -25.5)); // Galería antorchas P_Diddy
         cuevas.addWaypoint(new Location(w, -370.5, 61.0, -35.5)); // Caverna antorchas taetti
         cuevas.addWaypoint(new Location(w, -20.5, 30.0, -90.5));  // Túnel con antorchas Este
+        cuevas.addWaypoint(new Location(w, -799.5, 47.0, -187.5)); // Búnker Sur
         cuevas.addWaypoint(new Location(w, -787.5, 35.0, -140.5)); // Galería iluminada Sur
         cuevas.addWaypoint(new Location(w, -760.5, 32.0, -160.5)); // Tramo cuevas iluminadas
+        cuevas.addWaypoint(new Location(w, -752.5, 27.0, -182.5)); // Almacén subterráneo Sur
         sectors.put(cuevas.id, cuevas);
 
-        // 4. Sector Minas Profundas de Diamantes (Subterráneo Y=11..19)
+        // 4. Sector Minas Profundas de Diamantes (Subterráneo Y=11..19 contiguo)
         PatrolSector subDiamantes = new PatrolSector("sub_minas_diamantes", "Minas Profundas Diamantes [Subterráneo Y=11-19]", w.getName(), true);
         subDiamantes.addWaypoint(new Location(w, -32.5, 11.0, -69.5)); // Pique activo Piccino
         subDiamantes.addWaypoint(new Location(w, -16.5, 19.0, -137.5)); // Galería diamantes Leo
-        subDiamantes.addWaypoint(new Location(w, -25.5, 12.0, -100.5));
-        subDiamantes.addWaypoint(new Location(w, -799.5, 47.0, -187.5)); // Búnker Sur
-        subDiamantes.addWaypoint(new Location(w, -752.5, 27.0, -182.5));
+        subDiamantes.addWaypoint(new Location(w, -25.5, 12.0, -100.5)); // Túnel principal
+        subDiamantes.addWaypoint(new Location(w, -45.5, 14.0, -85.5));  // Cruce de galerías
+        subDiamantes.addWaypoint(new Location(w, -20.5, 12.0, -120.5)); // Fondo de mina
         sectors.put(subDiamantes.id, subDiamantes);
 
         // 5. Sector Dinámico Jugadores (Rastreo de presencia de jugadores activos)
@@ -715,7 +717,11 @@ public class PoliceManager {
                     // Si los jugadores se fueron muy lejos, ubicarse en el perímetro exterior (a ~18 bloques)
                     Location pLocTarget = nearestPlayer.getLocation();
                     Location safe = findSafeStandingLocation(pLocTarget.clone().add(random.nextBoolean() ? 18 : -18, 0, random.nextBoolean() ? 18 : -18));
-                    off.entity.teleport(safe);
+                    if (safe != null) {
+                        if (!safe.getChunk().isLoaded()) safe.getChunk().load(true);
+                        if (!off.entity.getLocation().getChunk().isLoaded()) off.entity.getLocation().getChunk().load(true);
+                        off.entity.teleport(safe);
+                    }
                     return;
                 } else if (nearestDist > 16.0) {
                     // Caminata tranquila y serena hacia el perímetro a paso normal
@@ -766,7 +772,11 @@ public class PoliceManager {
             // Solo teleportar si está desfasado a más de 70 bloques o en alturas imposibles (atascado en bedrock/vacío)
             if (distSq > 70.0 * 70.0 || Math.abs(pLoc.getBlockY() - targetWp.getBlockY()) > 16) {
                 Location safe = findSafeStandingLocation(targetWp);
-                off.entity.teleport(safe);
+                if (safe != null) {
+                    if (!safe.getChunk().isLoaded()) safe.getChunk().load(true);
+                    if (!off.entity.getLocation().getChunk().isLoaded()) off.entity.getLocation().getChunk().load(true);
+                    off.entity.teleport(safe);
+                }
             } else {
                 try {
                     if (off.entity instanceof CraftCreature) {
@@ -1053,9 +1063,13 @@ public class PoliceManager {
 
         if (off.isAlive() && !targetSector.waypoints.isEmpty()) {
             Location dest = findSafeStandingLocation(targetSector.waypoints.get(0));
-            off.entity.teleport(dest);
-            off.entity.getWorld().playSound(dest, Sound.NOTE_PLING, 1.2f, 1.8f);
-            plugin.getLogger().info("[PoliceManager] " + off.name + " desplazado a patrullar: " + targetSector.name);
+            if (dest != null) {
+                if (!dest.getChunk().isLoaded()) dest.getChunk().load(true);
+                if (!off.entity.getLocation().getChunk().isLoaded()) off.entity.getLocation().getChunk().load(true);
+                off.entity.teleport(dest);
+                off.entity.getWorld().playSound(dest, Sound.NOTE_PLING, 1.2f, 1.8f);
+                plugin.getLogger().info("[PoliceManager] " + off.name + " desplazado a patrullar: " + targetSector.name);
+            }
         }
     }
 
