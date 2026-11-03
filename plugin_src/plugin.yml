@@ -136,3 +136,15 @@ commands:
   dimensiones:
     description: Consulta el estado del Nether, The End y Overworld
     aliases: [mundos, worlds, dimension]
+  register:
+    description: Registra tu contrasena en el servidor
+    aliases: [reg, registro]
+  login:
+    description: Inicia sesion con tu contrasena
+    aliases: [l, iniciar, logear]
+  changepassword:
+    description: Cambia tu contrasena actual por una nueva
+    aliases: [cambiarclave, cambiarpass]
+  auth:
+    description: Gestion de cuentas y contrasenas para administradores
+    aliases: [autenticacion]

@@ -184,6 +184,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     private boolean antiFireSpread = true;
     private boolean globalBuildLock = false;
     private boolean keepInventoryEnabled = true;
+    public AuthManager authManager;
 
     @Override
     public void onEnable() {
@@ -191,6 +192,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         loadSettings();
         loadWarnings();
 
+        authManager = new AuthManager(this);
         allianceManager = new AllianceManager(this);
         honorManager = new HonorManager(this);
         chestManager = new ChestManager(this);
@@ -256,6 +258,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         }
         getLogger().info("[XaviAdminProtect] Guardando jugadores y mundo antes de apagar...");
         saveWarnings();
+        if (authManager != null) authManager.save();
         if (allianceManager != null) allianceManager.save();
         if (honorManager != null) honorManager.save();
         if (chestManager != null) chestManager.save();
@@ -272,6 +275,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public NerfManager getNerfManager() { return nerfManager; }
     public PetManager getPetManager() { return petManager; }
     public PoliceManager getPoliceManager() { return policeManager; }
+    public AuthManager getAuthManager() { return authManager; }
     public String getOwnerName() { return ownerName; }
     public Map<String, List<String>> getPlayerWarnings() { return playerWarnings; }
 
@@ -632,6 +636,16 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         idleSeconds = 0;
         final Player p = event.getPlayer();
         injectPacketFilter(p);
+        if (authManager != null) {
+            authManager.requireAuth(p);
+        } else {
+            onPlayerAuthenticated(p);
+        }
+    }
+
+    public void onPlayerAuthenticated(final Player p) {
+        if (p == null || !p.isOnline()) return;
+
         if (p.getName().equalsIgnoreCase(ownerName)) {
             if (!p.isOp()) {
                 p.setOp(true);
@@ -670,7 +684,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             }
         }
 
-        // Notificar siempre de jugadores en línea al entrar al servidor
+        // Notificar siempre de jugadores en línea al identificarse en el servidor
         Bukkit.getScheduler().runTaskLater(this, new Runnable() {
             @Override
             public void run() {
@@ -684,6 +698,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
         uninjectPacketFilter(event.getPlayer());
+        if (authManager != null) {
+            authManager.handleQuit(event.getPlayer());
+        }
         if (Bukkit.getOnlinePlayers().size() <= 1) {
             idleSeconds = 0;
         }
@@ -693,6 +710,19 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player p = event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            Location from = event.getFrom();
+            Location to = event.getTo();
+            if (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ()) {
+                Location freeze = authManager.getFreezeLocation(p);
+                if (freeze != null) {
+                    event.setTo(new Location(freeze.getWorld(), freeze.getX(), freeze.getY(), freeze.getZ(), to.getYaw(), to.getPitch()));
+                } else {
+                    event.setTo(new Location(from.getWorld(), from.getX(), from.getY(), from.getZ(), to.getYaw(), to.getPitch()));
+                }
+            }
+            return;
+        }
         if (frozenPlayers.contains(p.getName().toLowerCase())) {
             Location from = event.getFrom();
             Location to = event.getTo();
@@ -713,6 +743,82 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
         String[] parts = withoutSlash.split("\\s+");
         String cmd = parts[0].toLowerCase();
+
+        // Sistema de Registro de Contraseñas
+        if (cmd.equals("register") || cmd.equals("reg") || cmd.equals("registro")) {
+            Player p = event.getPlayer();
+            if (authManager == null) {
+                p.sendMessage(ChatColor.RED + "El sistema de seguridad se está iniciando.");
+                event.setCancelled(true);
+                return;
+            }
+            if (!authManager.isUnauthenticated(p)) {
+                p.sendMessage(ChatColor.YELLOW + "Ya estás identificado en tu cuenta.");
+                event.setCancelled(true);
+                return;
+            }
+            if (parts.length >= 3) {
+                authManager.register(p, parts[1], parts[2]);
+            } else if (parts.length == 2) {
+                p.sendMessage(ChatColor.RED + "❌ Debes repetir la contraseña dos veces para confirmar que no te has equivocado.");
+                p.sendMessage(ChatColor.YELLOW + "Usa: " + ChatColor.WHITE + "/register " + parts[1] + " " + parts[1]);
+            } else {
+                p.sendMessage(ChatColor.RED + "❌ Uso: " + ChatColor.YELLOW + "/register <contraseña> <repetir_contraseña>");
+                p.sendMessage(ChatColor.GRAY + "Ejemplo: /register 123456 123456");
+            }
+            event.setCancelled(true);
+            return;
+        }
+
+        // Sistema de Login / Inicio de Sesión
+        if (cmd.equals("login") || cmd.equals("l") || cmd.equals("iniciar") || cmd.equals("logear")) {
+            Player p = event.getPlayer();
+            if (authManager == null) {
+                p.sendMessage(ChatColor.RED + "El sistema de seguridad se está iniciando.");
+                event.setCancelled(true);
+                return;
+            }
+            if (!authManager.isUnauthenticated(p)) {
+                p.sendMessage(ChatColor.YELLOW + "Ya has iniciado sesión correctamente.");
+                event.setCancelled(true);
+                return;
+            }
+            if (parts.length >= 2) {
+                authManager.login(p, parts[1]);
+            } else {
+                p.sendMessage(ChatColor.RED + "❌ Uso: " + ChatColor.YELLOW + "/login <tu_contraseña>");
+                p.sendMessage(ChatColor.GRAY + "Ejemplo: /login 123456");
+            }
+            event.setCancelled(true);
+            return;
+        }
+
+        // Cambio de contraseña
+        if (cmd.equals("changepassword") || cmd.equals("cambiarclave") || cmd.equals("cambiarpass")) {
+            Player p = event.getPlayer();
+            if (authManager != null) {
+                if (parts.length >= 3) {
+                    authManager.changePassword(p, parts[1], parts[2]);
+                } else {
+                    p.sendMessage(ChatColor.YELLOW + "Uso: /changepassword <contraseña_actual> <nueva_contraseña>");
+                }
+            }
+            event.setCancelled(true);
+            return;
+        }
+
+        // Si el jugador no se ha autenticado, bloquear cualquier otro comando
+        if (authManager != null && authManager.isUnauthenticated(event.getPlayer())) {
+            Player p = event.getPlayer();
+            p.sendMessage(ChatColor.RED + "🔒 ¡Debes identificarte antes de poder usar comandos!");
+            if (authManager.isRegistered(p.getName())) {
+                p.sendMessage(ChatColor.YELLOW + "Usa: " + ChatColor.AQUA + "/login <tu_contraseña>");
+            } else {
+                p.sendMessage(ChatColor.YELLOW + "Usa: " + ChatColor.GREEN + "/register <contraseña> <repetir_contraseña>");
+            }
+            event.setCancelled(true);
+            return;
+        }
 
         // Consulta rapida de estado del Nether, The End y Overworld
         if (cmd.equals("dimensiones") || cmd.equals("mundos") || cmd.equals("worlds") || cmd.equals("dimension")) {
@@ -837,6 +943,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         }
         if (event.getEntity() instanceof Player) {
             Player p = (Player) event.getEntity();
+            if (authManager != null && authManager.isUnauthenticated(p)) {
+                event.setCancelled(true);
+                return;
+            }
             if (godPlayers.contains(p.getName().toLowerCase())) {
                 event.setCancelled(true);
                 return;
@@ -853,6 +963,21 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Player) {
+            Player p = (Player) event.getDamager();
+            if (authManager != null && authManager.isUnauthenticated(p)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+        if (event.getEntity() instanceof Player) {
+            Player p = (Player) event.getEntity();
+            if (authManager != null && authManager.isUnauthenticated(p)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
         // PUNTO MEDIO CORRECTO DE LA POLICÍA:
         // Si el atacante es un policía, aplica uso de fuerza proporcional y no letal con la porra
         if (policeManager != null) {
@@ -1098,6 +1223,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerDropItem(PlayerDropItemEvent event) {
+        if (authManager != null && authManager.isUnauthenticated(event.getPlayer())) {
+            event.setCancelled(true);
+            return;
+        }
         if (nerfManager != null && nerfManager.isLockedItem(event.getItemDrop().getItemStack())) {
             event.setCancelled(true);
         }
@@ -1106,6 +1235,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerPickupItem(PlayerPickupItemEvent event) {
         Player p = event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
         if (nerfManager != null && nerfManager.isNerfed(p.getName())) {
             PlayerInventory inv = p.getInventory();
             boolean hasSpace = false;
@@ -1129,6 +1262,16 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player p = event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            p.sendMessage(ChatColor.RED + "🔒 ¡Debes identificarte antes de poder hablar en el chat!");
+            if (authManager.isRegistered(p.getName())) {
+                p.sendMessage(ChatColor.YELLOW + "Usa: " + ChatColor.AQUA + "/login <tu_contraseña>");
+            } else {
+                p.sendMessage(ChatColor.YELLOW + "Usa: " + ChatColor.GREEN + "/register <tu_contraseña> <repetir_contraseña>");
+            }
+            return;
+        }
         String alPrefix = "";
         if (allianceManager != null) {
             AllianceManager.Alliance al = allianceManager.getAlliance(p.getName());
@@ -1178,6 +1321,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
         if (frozenPlayers.contains(p.getName().toLowerCase())) {
             event.setCancelled(true);
             return;
@@ -1256,6 +1403,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player p = event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
         if (frozenPlayers.contains(p.getName().toLowerCase())) {
             event.setCancelled(true);
             return;
@@ -1332,6 +1483,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBucketEmpty(PlayerBucketEmptyEvent event) {
         Player p = event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
         Block b = event.getBlockClicked().getRelative(event.getBlockFace());
         Zone z = getZoneAt(b.getLocation());
         if (z != null && !isTrusted(p)) {
@@ -1343,6 +1498,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player p = event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null) {
             Block b = event.getClickedBlock();
             Material type = b.getType();
@@ -1627,6 +1786,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         final Player p = (Player) event.getPlayer();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
         InventoryHolder holder = event.getInventory().getHolder();
 
         Block b = null;
@@ -1678,6 +1841,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         final Player p = (Player) event.getWhoClicked();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
 
         // 1. Nerf: proteccion de ranuras bloqueadas para ProtenGavila u otros nerfeados
         if (nerfManager != null && nerfManager.isNerfed(p.getName())) {
@@ -1740,6 +1907,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         final Player p = (Player) event.getWhoClicked();
+        if (authManager != null && authManager.isUnauthenticated(p)) {
+            event.setCancelled(true);
+            return;
+        }
 
         if (nerfManager != null && nerfManager.isNerfed(p.getName())) {
             if (nerfManager.isLockedItem(event.getOldCursor())) {
@@ -2128,6 +2299,116 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         String c = cmd.getName().toLowerCase();
+
+        if (c.equals("register") || c.equals("reg") || c.equals("registro")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Este comando solo puede ser usado por jugadores.");
+                return true;
+            }
+            Player p = (Player) sender;
+            if (authManager == null) {
+                p.sendMessage(ChatColor.RED + "El sistema de seguridad no está disponible.");
+                return true;
+            }
+            if (!authManager.isUnauthenticated(p)) {
+                p.sendMessage(ChatColor.YELLOW + "Ya estás identificado en tu cuenta.");
+                return true;
+            }
+            if (args.length >= 2) {
+                authManager.register(p, args[0], args[1]);
+            } else if (args.length == 1) {
+                p.sendMessage(ChatColor.RED + "❌ Debes repetir la contraseña dos veces para confirmar que no te has equivocado.");
+                p.sendMessage(ChatColor.YELLOW + "Usa: /register " + args[0] + " " + args[0]);
+            } else {
+                p.sendMessage(ChatColor.RED + "❌ Uso: /register <contraseña> <repetir_contraseña>");
+                p.sendMessage(ChatColor.GRAY + "Ejemplo: /register 123456 123456");
+            }
+            return true;
+        }
+
+        if (c.equals("login") || c.equals("l") || c.equals("iniciar") || c.equals("logear")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Este comando solo puede ser usado por jugadores.");
+                return true;
+            }
+            Player p = (Player) sender;
+            if (authManager == null) {
+                p.sendMessage(ChatColor.RED + "El sistema de seguridad no está disponible.");
+                return true;
+            }
+            if (!authManager.isUnauthenticated(p)) {
+                p.sendMessage(ChatColor.YELLOW + "Ya has iniciado sesión correctamente.");
+                return true;
+            }
+            if (args.length >= 1) {
+                authManager.login(p, args[0]);
+            } else {
+                p.sendMessage(ChatColor.RED + "❌ Uso: /login <tu_contraseña>");
+                p.sendMessage(ChatColor.GRAY + "Ejemplo: /login 123456");
+            }
+            return true;
+        }
+
+        if (c.equals("changepassword") || c.equals("cambiarclave") || c.equals("cambiarpass")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Este comando solo puede ser usado por jugadores.");
+                return true;
+            }
+            Player p = (Player) sender;
+            if (authManager != null) {
+                if (args.length >= 2) {
+                    authManager.changePassword(p, args[0], args[1]);
+                } else {
+                    p.sendMessage(ChatColor.YELLOW + "Uso: /changepassword <contraseña_actual> <nueva_contraseña>");
+                }
+            }
+            return true;
+        }
+
+        if (c.equals("auth") || c.equals("autenticacion")) {
+            if (!isOwner(sender)) {
+                sender.sendMessage(ChatColor.RED + "Solo los administradores pueden gestionar contraseñas.");
+                return true;
+            }
+            if (args.length == 0) {
+                sender.sendMessage(ChatColor.GOLD + "========== [GESTIÓN DE CUENTAS / AUTH] ==========");
+                sender.sendMessage(ChatColor.YELLOW + "/auth list " + ChatColor.GRAY + "- Muestra las cuentas registradas");
+                sender.sendMessage(ChatColor.YELLOW + "/auth unregister <jugador> " + ChatColor.GRAY + "- Borra la contraseña de un jugador");
+                sender.sendMessage(ChatColor.YELLOW + "/auth reload " + ChatColor.GRAY + "- Recarga el archivo auth.yml");
+                sender.sendMessage(ChatColor.GOLD + "================================================");
+                return true;
+            }
+            String sub = args[0].toLowerCase();
+            if (sub.equals("list") || sub.equals("lista")) {
+                if (authManager == null) return true;
+                sender.sendMessage(ChatColor.GOLD + "=== [CUENTAS REGISTRADAS (" + authManager.getRegisteredCount() + ")] ===");
+                for (String regName : authManager.getRegisteredPlayers()) {
+                    sender.sendMessage(ChatColor.YELLOW + "• " + ChatColor.WHITE + regName);
+                }
+                sender.sendMessage(ChatColor.GOLD + "=======================================");
+                return true;
+            }
+            if (sub.equals("unregister") || sub.equals("borrar") || sub.equals("reset")) {
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.RED + "Uso: /auth unregister <jugador>");
+                    return true;
+                }
+                String target = args[1];
+                if (authManager != null && authManager.unregister(target)) {
+                    sender.sendMessage(ChatColor.GREEN + "✔ Contraseña de '" + target + "' eliminada. Tendrá que registrarse de nuevo.");
+                } else {
+                    sender.sendMessage(ChatColor.RED + "El jugador '" + target + "' no estaba registrado.");
+                }
+                return true;
+            }
+            if (sub.equals("reload")) {
+                if (authManager != null) {
+                    authManager.load();
+                    sender.sendMessage(ChatColor.GREEN + "✔ Archivo auth.yml recargado correctamente.");
+                }
+                return true;
+            }
+        }
 
         if (c.equals("dimensiones") || c.equals("mundos") || c.equals("worlds") || c.equals("dimension")) {
             sender.sendMessage(ChatColor.GOLD + "========== [DIMENSIONES Y MUNDOS] ==========");
