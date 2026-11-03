@@ -23,6 +23,8 @@ let publicWebUrl = null;
 let publicWsUrl = null;
 let tunnelStatus = 'inactivo'; // 'inactivo', 'conectando', 'activo', 'error'
 let adminChatHistory = [];
+let intentionalTunnelStop = false;
+let tunnelReconnectTimer = null;
 
 const WORKER_URL = 'https://server-cumbres.codenautajavier.workers.dev';
 const WORKER_SECRET = 'xaviadmin123';
@@ -160,7 +162,12 @@ function startCloudflareTunnel() {
     tunnelStatus = 'error';
     return;
   }
-  stopTunnel();
+  if (tunnelReconnectTimer) {
+    clearTimeout(tunnelReconnectTimer);
+    tunnelReconnectTimer = null;
+  }
+  intentionalTunnelStop = false;
+  stopTunnel(false);
   currentMode = 'casa';
   tunnelStatus = 'conectando';
   console.log(' [TUNEL] Iniciando Cloudflare Quick Tunnel en puerto 8081...');
@@ -202,8 +209,37 @@ function startCloudflareTunnel() {
 
     tunnelProcess.on('close', (code) => {
       console.log(' [TUNEL] Proceso de túnel Cloudflare finalizado (code ' + code + ')');
-      if (tunnelStatus === 'activo') tunnelStatus = 'inactivo';
       tunnelProcess = null;
+      if (tunnelStatus === 'activo') tunnelStatus = 'inactivo';
+      if (!intentionalTunnelStop && currentMode === 'casa') {
+        console.log(' [TUNEL WATCHDOG] El túnel Cloudflare se desconectó inesperadamente. Reconectando automáticamente en 3s...');
+        publicWebUrl = null;
+        publicWsUrl = null;
+        tunnelStatus = 'conectando';
+        if (tunnelReconnectTimer) clearTimeout(tunnelReconnectTimer);
+        tunnelReconnectTimer = setTimeout(() => {
+          if (!intentionalTunnelStop && currentMode === 'casa' && !tunnelProcess) {
+            startCloudflareTunnel();
+          }
+        }, 3000);
+      } else {
+        publicWebUrl = null;
+        publicWsUrl = null;
+      }
+    });
+
+    tunnelProcess.on('error', (err) => {
+      console.error(' [TUNEL Error]', err.message);
+      tunnelStatus = 'error';
+      tunnelProcess = null;
+      if (!intentionalTunnelStop && currentMode === 'casa') {
+        if (tunnelReconnectTimer) clearTimeout(tunnelReconnectTimer);
+        tunnelReconnectTimer = setTimeout(() => {
+          if (!intentionalTunnelStop && currentMode === 'casa' && !tunnelProcess) {
+            startCloudflareTunnel();
+          }
+        }, 3000);
+      }
     });
   } catch (e) {
     console.error(' [TUNEL Error]', e.message);
@@ -212,7 +248,12 @@ function startCloudflareTunnel() {
 }
 
 function startNgrokTunnel() {
-  stopTunnel();
+  if (tunnelReconnectTimer) {
+    clearTimeout(tunnelReconnectTimer);
+    tunnelReconnectTimer = null;
+  }
+  intentionalTunnelStop = false;
+  stopTunnel(false);
   currentMode = 'ngrok';
   tunnelStatus = 'conectando';
   console.log(' [TUNEL] Iniciando Ngrok Tunnel en puerto 8081...');
@@ -249,8 +290,37 @@ function startNgrokTunnel() {
 
     tunnelProcess.on('close', (code) => {
       console.log(' [TUNEL] Proceso de Ngrok finalizado (code ' + code + ')');
-      if (tunnelStatus === 'activo') tunnelStatus = 'inactivo';
       tunnelProcess = null;
+      if (tunnelStatus === 'activo') tunnelStatus = 'inactivo';
+      if (!intentionalTunnelStop && currentMode === 'ngrok') {
+        console.log(' [TUNEL WATCHDOG] El túnel Ngrok se desconectó inesperadamente. Reconectando en 3s...');
+        publicWebUrl = null;
+        publicWsUrl = null;
+        tunnelStatus = 'conectando';
+        if (tunnelReconnectTimer) clearTimeout(tunnelReconnectTimer);
+        tunnelReconnectTimer = setTimeout(() => {
+          if (!intentionalTunnelStop && currentMode === 'ngrok' && !tunnelProcess) {
+            startNgrokTunnel();
+          }
+        }, 3000);
+      } else {
+        publicWebUrl = null;
+        publicWsUrl = null;
+      }
+    });
+
+    tunnelProcess.on('error', (err) => {
+      console.error(' [TUNEL Error]', err.message);
+      tunnelStatus = 'error';
+      tunnelProcess = null;
+      if (!intentionalTunnelStop && currentMode === 'ngrok') {
+        if (tunnelReconnectTimer) clearTimeout(tunnelReconnectTimer);
+        tunnelReconnectTimer = setTimeout(() => {
+          if (!intentionalTunnelStop && currentMode === 'ngrok' && !tunnelProcess) {
+            startNgrokTunnel();
+          }
+        }, 3000);
+      }
     });
   } catch (e) {
     console.error(' [TUNEL Error]', e.message);
@@ -258,7 +328,14 @@ function startNgrokTunnel() {
   }
 }
 
-function stopTunnel() {
+function stopTunnel(intentional = true) {
+  if (intentional) {
+    intentionalTunnelStop = true;
+    if (tunnelReconnectTimer) {
+      clearTimeout(tunnelReconnectTimer);
+      tunnelReconnectTimer = null;
+    }
+  }
   if (tunnelProcess) {
     try { tunnelProcess.kill(); } catch (e) {}
     tunnelProcess = null;
@@ -268,10 +345,27 @@ function stopTunnel() {
   publicWebUrl = null;
   publicWsUrl = null;
   tunnelStatus = 'inactivo';
-  try {
-    fs.writeFileSync(path.join(SERVER_DIR, 'ENLACE_ACTUAL.txt'), 'Servidor apagado.\r\n', 'utf8');
-  } catch (e) {}
+  if (intentional) {
+    try {
+      fs.writeFileSync(path.join(SERVER_DIR, 'ENLACE_ACTUAL.txt'), 'Servidor apagado.\r\n', 'utf8');
+    } catch (e) {}
+  }
 }
+
+// Watchdog de túnel permanente para mantener la conexión 24/7 sin caídas
+setInterval(() => {
+  if (currentMode === 'casa' && !intentionalTunnelStop) {
+    if (!tunnelProcess || tunnelStatus === 'inactivo' || tunnelStatus === 'error') {
+      console.log(' [TUNEL WATCHDOG] Detectado túnel inactivo en modo casa. Auto-restaurando...');
+      startCloudflareTunnel();
+    }
+  } else if (currentMode === 'ngrok' && !intentionalTunnelStop) {
+    if (!tunnelProcess || tunnelStatus === 'inactivo' || tunnelStatus === 'error') {
+      console.log(' [TUNEL WATCHDOG] Detectado túnel inactivo en modo ngrok. Auto-restaurando...');
+      startNgrokTunnel();
+    }
+  }
+}, 15000);
 
 let globalRl = null;
 
