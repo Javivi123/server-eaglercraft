@@ -148,3 +148,6 @@ commands:
   auth:
     description: Gestion de cuentas y contrasenas para administradores
     aliases: [autenticacion]
+  conexiones:
+    description: Muestra la fecha y hora de la ultima conexion de cada jugador
+    aliases: [ultimavez, lastseen, logins]

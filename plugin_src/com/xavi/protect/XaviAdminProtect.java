@@ -88,6 +88,7 @@ import net.minecraft.server.v1_8_R3.EntityPlayer;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -847,6 +848,30 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                         + ChatColor.GRAY + " | PvP: " + (w.getPVP() ? ChatColor.GREEN + "SI" : ChatColor.RED + "NO"));
             }
             p.sendMessage(ChatColor.GOLD + "============================================");
+            event.setCancelled(true);
+            return;
+        }
+
+        // Consulta de ultima vez de conexion de cada jugador
+        if (cmd.equals("conexiones") || cmd.equals("ultimavez") || cmd.equals("lastseen") || cmd.equals("logins")) {
+            Player p = event.getPlayer();
+            p.sendMessage(ChatColor.GOLD + "========== [ÚLTIMA CONEXIÓN DE CADA JUGADOR] ==========");
+            List<org.bukkit.OfflinePlayer> allOffline = new ArrayList<org.bukkit.OfflinePlayer>(Arrays.asList(Bukkit.getOfflinePlayers()));
+            Collections.sort(allOffline, new Comparator<org.bukkit.OfflinePlayer>() {
+                @Override
+                public int compare(org.bukkit.OfflinePlayer o1, org.bukkit.OfflinePlayer o2) {
+                    return Long.compare(o2.getLastPlayed(), o1.getLastPlayed());
+                }
+            });
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+            for (org.bukkit.OfflinePlayer op : allOffline) {
+                if (op.getName() == null) continue;
+                String status = op.isOnline() ? ChatColor.GREEN + "[EN LÍNEA]" : ChatColor.GRAY + "[DESCONECTADO]";
+                String dateStr = op.getLastPlayed() > 0 ? sdf.format(new Date(op.getLastPlayed())) : "Desconocido";
+                p.sendMessage(ChatColor.YELLOW + "• " + ChatColor.WHITE + "" + ChatColor.BOLD + op.getName()
+                        + " " + status + ChatColor.GRAY + " - Última vez: " + ChatColor.AQUA + dateStr);
+            }
+            p.sendMessage(ChatColor.GOLD + "=======================================================");
             event.setCancelled(true);
             return;
         }
@@ -2408,6 +2433,27 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 }
                 return true;
             }
+        }
+
+        if (c.equals("conexiones") || c.equals("ultimavez") || c.equals("lastseen") || c.equals("logins")) {
+            sender.sendMessage(ChatColor.GOLD + "========== [ÚLTIMA CONEXIÓN DE CADA JUGADOR] ==========");
+            List<org.bukkit.OfflinePlayer> allOffline = new ArrayList<org.bukkit.OfflinePlayer>(Arrays.asList(Bukkit.getOfflinePlayers()));
+            Collections.sort(allOffline, new Comparator<org.bukkit.OfflinePlayer>() {
+                @Override
+                public int compare(org.bukkit.OfflinePlayer o1, org.bukkit.OfflinePlayer o2) {
+                    return Long.compare(o2.getLastPlayed(), o1.getLastPlayed());
+                }
+            });
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+            for (org.bukkit.OfflinePlayer op : allOffline) {
+                if (op.getName() == null) continue;
+                String status = op.isOnline() ? ChatColor.GREEN + "[EN LÍNEA]" : ChatColor.GRAY + "[DESCONECTADO]";
+                String dateStr = op.getLastPlayed() > 0 ? sdf.format(new Date(op.getLastPlayed())) : "Desconocido";
+                sender.sendMessage(ChatColor.YELLOW + "• " + ChatColor.WHITE + "" + ChatColor.BOLD + op.getName()
+                        + " " + status + ChatColor.GRAY + " - Última vez: " + ChatColor.AQUA + dateStr);
+            }
+            sender.sendMessage(ChatColor.GOLD + "=======================================================");
+            return true;
         }
 
         if (c.equals("dimensiones") || c.equals("mundos") || c.equals("worlds") || c.equals("dimension")) {
