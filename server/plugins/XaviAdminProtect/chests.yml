@@ -251,3 +251,10 @@ chests:
     z: -36
     owner: taetti
     claimedDate: 2026-11-02 19:48
+  world_-226_64_98:
+    world: world
+    x: -226
+    y: 64
+    z: 98
+    owner: eL_guille
+    claimedDate: 2026-11-03 21:12

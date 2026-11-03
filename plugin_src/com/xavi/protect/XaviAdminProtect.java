@@ -69,6 +69,8 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerBedEnterEvent;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -98,6 +100,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class XaviAdminProtect extends JavaPlugin implements Listener {
 
@@ -173,6 +176,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     private File warningsFile;
     private FileConfiguration warningsCfg;
     private final Map<String, List<String>> playerWarnings = new LinkedHashMap<String, List<String>>();
+    private final Map<String, Location> playerBeds = new ConcurrentHashMap<String, Location>();
 
     private int idleLimitMinutes = 10;
     private int idleSeconds = 0;
@@ -192,6 +196,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         saveDefaultConfig();
         loadSettings();
         loadWarnings();
+        loadPlayerBeds();
 
         authManager = new AuthManager(this);
         allianceManager = new AllianceManager(this);
@@ -462,7 +467,174 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         return trustedFriends.contains(p.getName().toLowerCase());
     }
 
-        public LivingEntity getTargetAnimal(Player p, int maxDistance) {
+    public void loadPlayerBeds() {
+        ConfigurationSection sec = getConfig().getConfigurationSection("player_beds");
+        if (sec != null) {
+            for (String key : sec.getKeys(false)) {
+                String wName = sec.getString(key + ".world");
+                World w = (wName != null ? Bukkit.getWorld(wName) : Bukkit.getWorlds().get(0));
+                if (w != null) {
+                    double x = sec.getDouble(key + ".x");
+                    double y = sec.getDouble(key + ".y");
+                    double z = sec.getDouble(key + ".z");
+                    playerBeds.put(key.toLowerCase(), new Location(w, x, y, z));
+                }
+            }
+        }
+        for (OfflinePlayer op : Bukkit.getOfflinePlayers()) {
+            if (op.getName() != null) {
+                Location bed = op.getBedSpawnLocation();
+                if (bed != null) {
+                    playerBeds.put(op.getName().toLowerCase(), bed);
+                }
+            }
+        }
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location bed = p.getBedSpawnLocation();
+            if (bed != null) {
+                playerBeds.put(p.getName().toLowerCase(), bed);
+            }
+        }
+    }
+
+    public void savePlayerBed(String playerName, Location loc) {
+        if (playerName == null || loc == null) return;
+        playerBeds.put(playerName.toLowerCase(), loc);
+        getConfig().set("player_beds." + playerName.toLowerCase() + ".world", loc.getWorld().getName());
+        getConfig().set("player_beds." + playerName.toLowerCase() + ".x", loc.getBlockX());
+        getConfig().set("player_beds." + playerName.toLowerCase() + ".y", loc.getBlockY());
+        getConfig().set("player_beds." + playerName.toLowerCase() + ".z", loc.getBlockZ());
+        saveConfig();
+    }
+
+    public Location getPlayerBed(String playerName) {
+        if (playerName == null) return null;
+        Location loc = playerBeds.get(playerName.toLowerCase());
+        if (loc == null) {
+            Player p = Bukkit.getPlayerExact(playerName);
+            if (p != null) {
+                loc = p.getBedSpawnLocation();
+                if (loc != null) playerBeds.put(playerName.toLowerCase(), loc);
+            }
+        }
+        return loc;
+    }
+
+    public boolean isHouseConstructionBlock(Material m) {
+        if (m == null) return false;
+        switch (m) {
+            case BED_BLOCK:
+            case WOOD:
+            case LOG:
+            case LOG_2:
+            case COBBLESTONE:
+            case SMOOTH_BRICK:
+            case BRICK:
+            case NETHER_BRICK:
+            case QUARTZ_BLOCK:
+            case HARD_CLAY:
+            case STAINED_CLAY:
+            case GLASS:
+            case THIN_GLASS:
+            case STAINED_GLASS:
+            case STAINED_GLASS_PANE:
+            case WOOD_DOOR:
+            case IRON_DOOR_BLOCK:
+            case SPRUCE_DOOR:
+            case BIRCH_DOOR:
+            case JUNGLE_DOOR:
+            case ACACIA_DOOR:
+            case DARK_OAK_DOOR:
+            case TRAP_DOOR:
+            case IRON_TRAPDOOR:
+            case WOOD_STAIRS:
+            case COBBLESTONE_STAIRS:
+            case BRICK_STAIRS:
+            case SMOOTH_STAIRS:
+            case NETHER_BRICK_STAIRS:
+            case SANDSTONE_STAIRS:
+            case SPRUCE_WOOD_STAIRS:
+            case BIRCH_WOOD_STAIRS:
+            case JUNGLE_WOOD_STAIRS:
+            case ACACIA_STAIRS:
+            case DARK_OAK_STAIRS:
+            case QUARTZ_STAIRS:
+            case RED_SANDSTONE_STAIRS:
+            case STEP:
+            case WOOD_STEP:
+            case STONE_SLAB2:
+            case FENCE:
+            case FENCE_GATE:
+            case IRON_FENCE:
+            case BOOKSHELF:
+            case WORKBENCH:
+            case FURNACE:
+            case BURNING_FURNACE:
+            case ANVIL:
+            case ENCHANTMENT_TABLE:
+            case TORCH:
+            case CARPET:
+            case WOOL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public String getHouseOwnerNear(Player breaker, Block b) {
+        if (b == null || breaker == null) return null;
+        if (breaker.getName().equalsIgnoreCase(ownerName)) return null; // Don Xavi bypass
+        if (!isHouseConstructionBlock(b.getType())) return null;
+
+        World w = b.getWorld();
+
+        // 1. ¿Tiene el propio destructor su cama en esta construccion inmediata?
+        Location breakerBed = getPlayerBed(breaker.getName());
+        if (breakerBed != null && breakerBed.getWorld().equals(w)) {
+            int distH = Math.max(Math.abs(breakerBed.getBlockX() - b.getX()), Math.abs(breakerBed.getBlockZ() - b.getZ()));
+            int distV = Math.abs(breakerBed.getBlockY() - b.getY());
+            if (distH <= 25 && distV <= 14) {
+                // Es la propia casa del destructor: PUEDE MODIFICARLA Y ROMPER SUS BLOQUES
+                return null;
+            }
+        }
+
+        // 2. ¿Pertenece esta zona a la casa de otro jugador (su cama esta aqui)?
+        for (Map.Entry<String, Location> entry : playerBeds.entrySet()) {
+            String owner = entry.getKey();
+            if (owner.equalsIgnoreCase(breaker.getName())) continue;
+            Location bedLoc = entry.getValue();
+            if (bedLoc != null && bedLoc.getWorld().equals(w)) {
+                int distH = Math.max(Math.abs(bedLoc.getBlockX() - b.getX()), Math.abs(bedLoc.getBlockZ() - b.getZ()));
+                int distV = Math.abs(bedLoc.getBlockY() - b.getY());
+                if (distH <= 25 && distV <= 14) {
+                    return owner; // ¡Es la casa de este jugador!
+                }
+            }
+        }
+
+        // 3. ¿Hay cofres registrados de otro jugador en esta vivienda/construccion?
+        if (chestManager != null) {
+            for (ChestManager.ChestData cd : chestManager.getAllChests().values()) {
+                if (!cd.owner.equalsIgnoreCase(breaker.getName()) && cd.world.equalsIgnoreCase(w.getName())) {
+                    int distH = Math.max(Math.abs(cd.x - b.getX()), Math.abs(cd.z - b.getZ()));
+                    int distV = Math.abs(cd.y - b.getY());
+                    if (distH <= 18 && distV <= 10) {
+                        return cd.owner; // Construccion protegida del dueño de los cofres
+                    }
+                }
+            }
+        }
+
+        // 4. Si el bloque especifico es una CAMA fisica en una casa ajena
+        if (b.getType() == Material.BED_BLOCK) {
+            return "otro ciudadano";
+        }
+
+        return null;
+    }
+
+    public LivingEntity getTargetAnimal(Player p, int maxDistance) {
         Location eye = p.getEyeLocation();
         org.bukkit.util.Vector dir = eye.getDirection().normalize().multiply(0.35);
         Location cur = eye.clone();
@@ -1113,10 +1285,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         }
 
         if (attacker != null && event.getEntity() instanceof Player) {
-            if (policeManager != null) {
-                policeManager.witnessCrime(attacker, "Agresión Física", "atacar a un ciudadano en la vía pública", event.getEntity().getLocation());
-            }
             Player victim = (Player) event.getEntity();
+            if (policeManager != null) {
+                policeManager.witnessPvP(attacker, victim, victim.getLocation());
+            }
             if (frozenPlayers.contains(attacker.getName().toLowerCase())) {
                 event.setCancelled(true);
                 attacker.sendMessage(ChatColor.AQUA + "¡Estás congelado y no puedes atacar!");
@@ -1404,6 +1576,22 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             }
         }
 
+        // PROTECCIÓN DE CASAS AJENAS (La vivienda de un jugador es donde está su cama o sus cofres)
+        String houseOwner = getHouseOwnerNear(p, b);
+        if (houseOwner != null) {
+            event.setCancelled(true);
+            p.sendMessage(ChatColor.RED + "🚨 [POLICÍA] " + ChatColor.GOLD + "¡ALTO! "
+                    + ChatColor.RED + "No puedes romper la casa de " + ChatColor.YELLOW + houseOwner
+                    + ChatColor.RED + " (tu cama no está en esta vivienda).");
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 1));
+            p.getWorld().playSound(b.getLocation(), Sound.ANVIL_LAND, 0.8f, 1.6f);
+
+            if (policeManager != null) {
+                policeManager.witnessCrime(p, "Vandalismo a Vivienda Ajena", "intentar romper la casa de " + houseOwner, b.getLocation());
+            }
+            return;
+        }
+
         Zone z = getZoneAt(event.getBlock().getLocation());
         if (z != null && !isTrusted(p)) {
             event.setCancelled(true);
@@ -1439,6 +1627,11 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             return;
         }
         Block b = event.getBlockPlaced();
+
+        // Registro de cama para definir la vivienda de cada jugador
+        if (b.getType() == Material.BED_BLOCK) {
+            savePlayerBed(p.getName(), b.getLocation());
+        }
 
         // Proteccion contra cofres dobles no autorizados
         if (b.getType() == Material.CHEST || b.getType() == Material.TRAPPED_CHEST) {
@@ -1640,6 +1833,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
         Location bedLoc = bedBlock.getLocation();
         World world = bedLoc.getWorld();
+        savePlayerBed(p.getName(), bedLoc);
         if (world.getEnvironment() != World.Environment.NORMAL) {
             // En el Nether o The End, dejamos que vanilla maneje la explosión de la cama de forma normal
             return;
@@ -1691,6 +1885,13 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             for (net.minecraft.server.v1_8_R3.Entity nmsCop : nearbyPoliceNms) {
                 nmsCop.dead = false;
             }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerBedEnter(PlayerBedEnterEvent event) {
+        if (event.getBed() != null) {
+            savePlayerBed(event.getPlayer().getName(), event.getBed().getLocation());
         }
     }
 

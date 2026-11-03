@@ -222,32 +222,74 @@ public class PoliceManager {
         // 1. Agente Torres - Comisario Jefe (Plaza Central y Casas Principales)
         officers.put("torres", new PoliceOfficer(
                 "torres", "Agente Torres", "Comisario Jefe",
-                "Plaza Central y Casas Principales [Superficie]",
+                "Plaza Central y Casa de Xavi [Superficie]",
                 Color.fromRGB(16, 44, 87), Material.CHAINMAIL_HELMET, "central"));
 
-        // 2. Agente Ramírez - Inspector de Minas (Subterráneo, Diamantes y Búnker)
+        // 2. Agente Romero - Guardia de Plaza y Vías Públicas
+        officers.put("romero", new PoliceOfficer(
+                "romero", "Agente Romero", "Guardia de Plaza",
+                "Caminos y Almacén Central [Superficie]",
+                Color.fromRGB(22, 55, 95), Material.CHAINMAIL_HELMET, "central"));
+
+        // 3. Agente Morales - Guardia Residencial Norte (Casas de Taetti y Leo)
+        officers.put("morales", new PoliceOfficer(
+                "morales", "Agente Morales", "Guardia Residencial Norte",
+                "Barrio Norte y Casas de Taetti y Leo [Superficie]",
+                Color.fromRGB(20, 60, 120), Material.LEATHER_HELMET, "norte_residencial"));
+
+        // 4. Agente Herrera - Unidad Táctica y Pacificación Norte
+        officers.put("herrera", new PoliceOfficer(
+                "herrera", "Agente Herrera", "Guardia Táctico Norte",
+                "Interiores y Calles Residenciales Norte",
+                Color.fromRGB(15, 50, 100), Material.IRON_HELMET, "norte_residencial"));
+
+        // 5. Agente Delgado - Guardia Residencial Este (Casa y Granja de Piccino)
+        officers.put("delgado", new PoliceOfficer(
+                "delgado", "Agente Delgado", "Guardia Residencial Este",
+                "Barrio Este, Casa y Granja de Piccino [Superficie]",
+                Color.fromRGB(15, 75, 110), Material.LEATHER_HELMET, "este_residencial"));
+
+        // 6. Agente Vargas - Custodio de Construcciones e Interiores
+        officers.put("vargas", new PoliceOfficer(
+                "vargas", "Agente Vargas", "Custodio de Construcciones",
+                "Construcciones e Interiores de Viviendas Este",
+                Color.fromRGB(20, 70, 115), Material.LEATHER_HELMET, "este_residencial"));
+
+        // 7. Agente Ramírez - Inspector de Minas Profundas (Subterráneo Y=11-19)
         officers.put("ramirez", new PoliceOfficer(
                 "ramirez", "Agente Ramírez", "Inspector de Minas",
-                "Minas Profundas Diamantes y Búnker [Subterráneo]",
+                "Minas Profundas Diamantes [Subterráneo Y=11-19]",
                 Color.fromRGB(25, 35, 60), Material.IRON_HELMET, "sub_minas_diamantes"));
 
-        // 3. Agente Morales - Guardia Residencial (Casas y Viviendas)
-        officers.put("morales", new PoliceOfficer(
-                "morales", "Agente Morales", "Guardia Residencial",
-                "Barrios Residenciales y Casas de Jugadores",
-                Color.fromRGB(20, 60, 120), Material.LEATHER_HELMET, "casas_residencial"));
-
-        // 4. Agente Vega - Vigilante Espeleológico (Cuevas Exploradas con Antorchas)
+        // 8. Agente Vega - Vigilante Espeleológico (Cuevas con Antorchas)
         officers.put("vega", new PoliceOfficer(
                 "vega", "Agente Vega", "Vigilante de Cuevas",
                 "Cuevas Exploradas con Antorchas [Subterráneo]",
                 Color.fromRGB(30, 50, 75), Material.CHAINMAIL_HELMET, "cuevas_antorchas"));
 
-        // 5. Agente Navarro - Unidad de Intervención Rápida (Zonas Activas con Jugadores)
+        // 9. Agente Mendoza - Vigilante de Búnker Sur (-800, 40, -180)
+        officers.put("mendoza", new PoliceOfficer(
+                "mendoza", "Agente Mendoza", "Vigilante de Búnker",
+                "Búnker Subterráneo Sur y Galerías de Seguridad",
+                Color.fromRGB(28, 40, 65), Material.IRON_HELMET, "sur_bunker"));
+
+        // 10. Agente Ortega - Patrulla de Avanzada Sur (-819, 67, -720)
+        officers.put("ortega", new PoliceOfficer(
+                "ortega", "Agente Ortega", "Patrulla de Avanzada",
+                "Avanzada y Perímetro Sur",
+                Color.fromRGB(25, 65, 105), Material.CHAINMAIL_HELMET, "sur_bunker"));
+
+        // 11. Agente Navarro - Unidad de Intervención Rápida 1 (Sigue dinámicamente a los jugadores)
         officers.put("navarro", new PoliceOfficer(
-                "navarro", "Agente Navarro", "Unidad Rápida",
-                "Vigilancia Dinámica donde haya Jugadores Activos",
+                "navarro", "Agente Navarro", "Unidad Rápida 1",
+                "Vigilancia Dinámica Inmediata donde haya Jugadores",
                 Color.fromRGB(10, 80, 140), Material.IRON_HELMET, "dinamico_jugadores"));
+
+        // 12. Agente Castillo - Unidad de Intervención Rápida 2 (Sigue dinámicamente a los jugadores)
+        officers.put("castillo", new PoliceOfficer(
+                "castillo", "Agente Castillo", "Unidad Rápida 2",
+                "Vigilancia Dinámica Inmediata donde haya Jugadores",
+                Color.fromRGB(10, 75, 135), Material.IRON_HELMET, "dinamico_jugadores"));
     }
 
     public Map<String, PoliceOfficer> getOfficers() {
@@ -320,37 +362,41 @@ public class PoliceManager {
         }
         if (w == null) return;
 
-        // 1. Sector Central: Plaza Central y Casa de Xavi (Superficie)
+        // 1. Sector Central: Plaza Central y Casa de Xavi [Superficie]
         PatrolSector central = new PatrolSector("central", "Plaza Central y Casa de Xavi [Superficie]", w.getName(), false);
         central.addWaypoint(new Location(w, -272.5, 77.0, -6.5));
-        central.addWaypoint(new Location(w, -285.0, 77.0, -8.0));
-        central.addWaypoint(new Location(w, -275.0, 76.0, 5.0));
-        central.addWaypoint(new Location(w, -264.0, 76.0, -2.0));
+        central.addWaypoint(new Location(w, -270.5, 76.0, -3.5)); // Entrada interior casa Xavi
+        central.addWaypoint(new Location(w, -276.5, 67.0, -10.5)); // Sótano y cofres Xavi
+        central.addWaypoint(new Location(w, -285.0, 77.0, -8.0));  // Plaza central
+        central.addWaypoint(new Location(w, -275.0, 76.0, 5.0));   // Salida sur
+        central.addWaypoint(new Location(w, -264.0, 76.0, -2.0));  // Calle este
         sectors.put(central.id, central);
 
-        // 2. Sector Casas y Residencial: Perímetro de casas de jugadores
-        PatrolSector casas = new PatrolSector("casas_residencial", "Zona Residencial y Casas de Jugadores [Superficie]", w.getName(), false);
-        casas.addWaypoint(new Location(w, -270.5, 76.0, -3.5)); // Entrada Xavi
-        casas.addWaypoint(new Location(w, -363.5, 96.0, -48.5)); // Casa taetti
-        casas.addWaypoint(new Location(w, -366.5, 96.0, -44.5)); // Casa Leo
-        casas.addWaypoint(new Location(w, -11.5, 76.0, -80.5));  // Casa Piccino
-        casas.addWaypoint(new Location(w, -6.5, 76.0, -80.5));   // Granja Piccino
-        casas.addWaypoint(new Location(w, -819.5, 67.0, -720.5)); // Avanzada taetti
-        sectors.put(casas.id, casas);
+        // 2. Sector Residencial Norte: Casas de Taetti y Leo [Superficie]
+        PatrolSector norte = new PatrolSector("norte_residencial", "Barrio Residencial Norte (Taetti y Leo)", w.getName(), false);
+        norte.addWaypoint(new Location(w, -363.5, 96.0, -48.5)); // Interior casa Taetti
+        norte.addWaypoint(new Location(w, -366.5, 96.0, -44.5)); // Interior casa Leo
+        norte.addWaypoint(new Location(w, -358.5, 96.0, -52.5)); // Terraza y mirador
+        norte.addWaypoint(new Location(w, -370.5, 95.0, -40.5)); // Acceso colina
+        sectors.put(norte.id, norte);
 
-        // 3. Sector Cuevas Exploradas con Antorchas (Subterráneo)
+        // 3. Sector Residencial Este: Casa y Granja de Piccino [Superficie]
+        PatrolSector este = new PatrolSector("este_residencial", "Barrio Residencial Este (Piccino)", w.getName(), false);
+        este.addWaypoint(new Location(w, -11.5, 76.0, -80.5));  // Interior casa Piccino
+        este.addWaypoint(new Location(w, -6.5, 76.0, -80.5));   // Granja Piccino
+        este.addWaypoint(new Location(w, -15.5, 76.0, -75.5));  // Almacén y entrada
+        este.addWaypoint(new Location(w, -20.5, 75.0, -85.5));  // Perímetro exterior
+        sectors.put(este.id, este);
+
+        // 4. Sector Cuevas Exploradas con Antorchas (Subterráneo)
         PatrolSector cuevas = new PatrolSector("cuevas_antorchas", "Cuevas Exploradas con Antorchas [Subterráneo]", w.getName(), true);
         cuevas.addWaypoint(new Location(w, -255.5, 65.0, -13.5)); // Galería iluminada entrada
         cuevas.addWaypoint(new Location(w, -252.5, 61.0, -25.5)); // Galería antorchas P_Diddy
         cuevas.addWaypoint(new Location(w, -370.5, 61.0, -35.5)); // Caverna antorchas taetti
-        cuevas.addWaypoint(new Location(w, -20.5, 30.0, -90.5));  // Túnel con antorchas Este
-        cuevas.addWaypoint(new Location(w, -799.5, 47.0, -187.5)); // Búnker Sur
-        cuevas.addWaypoint(new Location(w, -787.5, 35.0, -140.5)); // Galería iluminada Sur
-        cuevas.addWaypoint(new Location(w, -760.5, 32.0, -160.5)); // Tramo cuevas iluminadas
-        cuevas.addWaypoint(new Location(w, -752.5, 27.0, -182.5)); // Almacén subterráneo Sur
+        cuevas.addWaypoint(new Location(w, -20.5, 30.0, -90.5));  // Túnel Este
         sectors.put(cuevas.id, cuevas);
 
-        // 4. Sector Minas Profundas de Diamantes (Subterráneo Y=11..19 contiguo)
+        // 5. Sector Minas Profundas de Diamantes (Subterráneo Y=11..19)
         PatrolSector subDiamantes = new PatrolSector("sub_minas_diamantes", "Minas Profundas Diamantes [Subterráneo Y=11-19]", w.getName(), true);
         subDiamantes.addWaypoint(new Location(w, -32.5, 11.0, -69.5)); // Pique activo Piccino
         subDiamantes.addWaypoint(new Location(w, -16.5, 19.0, -137.5)); // Galería diamantes Leo
@@ -359,22 +405,47 @@ public class PoliceManager {
         subDiamantes.addWaypoint(new Location(w, -20.5, 12.0, -120.5)); // Fondo de mina
         sectors.put(subDiamantes.id, subDiamantes);
 
-        // 5. Sector Dinámico Jugadores (Rastreo de presencia de jugadores activos)
+        // 6. Sector Búnker y Avanzada Sur
+        PatrolSector surBunker = new PatrolSector("sur_bunker", "Búnker y Avanzada Sur", w.getName(), false);
+        surBunker.addWaypoint(new Location(w, -799.5, 47.0, -187.5)); // Búnker Sur
+        surBunker.addWaypoint(new Location(w, -787.5, 35.0, -140.5)); // Galería iluminada Sur
+        surBunker.addWaypoint(new Location(w, -752.5, 27.0, -182.5)); // Almacén subterráneo Sur
+        surBunker.addWaypoint(new Location(w, -819.5, 67.0, -720.5)); // Avanzada exterior Taetti
+        sectors.put(surBunker.id, surBunker);
+
+        // 7. Sector Dinámico Jugadores ("Por donde estemos")
         PatrolSector dinamico = new PatrolSector("dinamico_jugadores", "Zona Dinámica de Jugadores Activos", w.getName(), false);
         dinamico.addWaypoint(new Location(w, -272.5, 77.0, -6.5));
         sectors.put(dinamico.id, dinamico);
 
-        // Incorporar todos los cofres registrados en ChestManager automáticamente
+        // Incorporar todos los cofres registrados en ChestManager localmente en su sector exacto
         if (plugin.getChestManager() != null) {
             for (ChestManager.ChestData cd : plugin.getChestManager().getAllChests().values()) {
-                boolean isUnder = cd.y < 63;
                 Location cLoc = new Location(w, cd.x + 0.5, cd.y, cd.z + 0.5);
-
-                if (isUnder) {
+                if (cd.y < 30) {
+                    subDiamantes.addWaypoint(cLoc);
+                } else if (cd.y < 63) {
                     cuevas.addWaypoint(cLoc);
+                } else if (cd.x < -600) {
+                    surBunker.addWaypoint(cLoc);
+                } else if (cd.x < -320) {
+                    norte.addWaypoint(cLoc);
+                } else if (cd.x > -100) {
+                    este.addWaypoint(cLoc);
                 } else {
-                    casas.addWaypoint(cLoc);
+                    central.addWaypoint(cLoc);
                 }
+            }
+        }
+
+        // Incorporar camas de jugadores como puntos de patrulla interior
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location bed = p.getBedSpawnLocation();
+            if (bed != null && bed.getWorld().equals(w)) {
+                if (bed.getX() < -600) surBunker.addWaypoint(bed);
+                else if (bed.getX() < -320) norte.addWaypoint(bed);
+                else if (bed.getX() > -100) este.addWaypoint(bed);
+                else central.addWaypoint(bed);
             }
         }
 
@@ -385,13 +456,20 @@ public class PoliceManager {
             else off.activeSector = central;
         }
 
-        plugin.getLogger().info("[PoliceManager] Inicializados " + sectors.size() + " sectores y 5 agentes policiales.");
+        plugin.getLogger().info("[PoliceManager] Inicializados " + sectors.size() + " sectores y " + officers.size() + " agentes policiales.");
     }
 
     public void registerPlayerConstruction(Location loc) {
         if (loc == null) return;
         boolean isUnder = loc.getBlockY() < 63;
-        PatrolSector targetSector = isUnder ? sectors.get("cuevas_antorchas") : sectors.get("casas_residencial");
+        PatrolSector targetSector;
+        if (isUnder) {
+            targetSector = (loc.getBlockY() < 30 ? sectors.get("sub_minas_diamantes") : sectors.get("cuevas_antorchas"));
+        } else {
+            if (loc.getX() < -320) targetSector = sectors.get("norte_residencial");
+            else if (loc.getX() > -100) targetSector = sectors.get("este_residencial");
+            else targetSector = sectors.get("central");
+        }
         if (targetSector != null) {
             targetSector.addWaypoint(loc.clone().add(0.5, 0.0, 0.5));
         }
@@ -670,7 +748,6 @@ public class PoliceManager {
         Location pLoc = off.entity.getLocation();
 
         // 1. SISTEMA ANTI-ESTORBO Y RESPETO DE ESPACIO PERSONAL
-        // Si hay ciudadanos pacíficos cerca, el policía NUNCA estorba: no bloquea puertas, minas ni pasillos
         if (off.pursuitTicks <= 0) {
             Player nearbyCitizen = null;
             double citizenDist = Double.MAX_VALUE;
@@ -685,23 +762,36 @@ public class PoliceManager {
                 }
             }
 
-            if (nearbyCitizen != null) {
-                // Si el jugador está muy pegado (< 2.2 bloques, ej: pasando por una puerta o minando un bloque),
-                // el agente cede el paso amablemente y se aparta hacia atrás o a un lado
-                if (citizenDist < 2.2) {
-                    Vector stepAway = pLoc.toVector().subtract(nearbyCitizen.getLocation().toVector()).setY(0);
-                    if (stepAway.lengthSquared() > 0.01) {
-                        stepAway.normalize().multiply(0.20);
-                        off.entity.setVelocity(stepAway);
-                    }
+            if (nearbyCitizen != null && citizenDist < 2.0) {
+                Vector stepAway = pLoc.toVector().subtract(nearbyCitizen.getLocation().toVector()).setY(0);
+                if (stepAway.lengthSquared() > 0.01) {
+                    stepAway.normalize().multiply(0.20);
+                    off.entity.setVelocity(stepAway);
                 }
-                // Pausar avance para no empujar al jugador ni interponerse en su línea de visión/trabajo
                 return;
             }
         }
 
-        // 2. COMPORTAMIENTO DEL AGENTE NAVARRO (Vigilancia Discreta de Perímetro, sin estorbar)
-        if (off.id.equals("navarro")) {
+        // 2. ENTRAR EN CONSTRUCCIONES Y VIVIENDAS DE JUGADORES
+        Block nearbyDoor = findNearbyDoor(pLoc, 10);
+        if (nearbyDoor != null && random.nextDouble() < 0.35) {
+            Block master = getMasterDoorBlock(nearbyDoor);
+            openDoor(master);
+            activePoliceDoors.put(master.getLocation(), System.currentTimeMillis() + 4500L);
+            Location insideTarget = findInteriorBehindDoor(master);
+            if (insideTarget != null) {
+                try {
+                    if (off.entity instanceof CraftCreature) {
+                        ((CraftCreature) off.entity).getHandle().getNavigation().a(
+                                insideTarget.getX(), insideTarget.getY(), insideTarget.getZ(), 1.0);
+                    }
+                } catch (Exception ignored) {}
+                return;
+            }
+        }
+
+        // 3. UNIDADES DINÁMICAS ("Por donde estemos"): Navarro, Castillo, Herrera, Vargas
+        if (off.id.equals("navarro") || off.id.equals("castillo") || off.id.equals("herrera") || off.id.equals("vargas")) {
             Player nearestPlayer = null;
             double nearestDist = Double.MAX_VALUE;
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -714,28 +804,24 @@ public class PoliceManager {
                 }
             }
             if (nearestPlayer != null) {
-                // Mantener distancia prudencial de observación (12 a 20 bloques), NUNCA meterse encima
-                if (nearestDist < 12.0) {
-                    // Ya está en buena posición de vigilancia, no acercarse más para no estorbar
-                    return;
+                if (nearestDist < 8.0) {
+                    return; // Buena posición de vigilancia
                 } else if (nearestDist > 65.0) {
-                    // Si los jugadores se fueron muy lejos, ubicarse en el perímetro exterior (a ~18 bloques)
                     Location pLocTarget = nearestPlayer.getLocation();
-                    Location safe = findSafeStandingLocation(pLocTarget.clone().add(random.nextBoolean() ? 18 : -18, 0, random.nextBoolean() ? 18 : -18));
+                    Location safe = findSafeStandingLocation(pLocTarget.clone().add(random.nextInt(16) - 8, 0, random.nextInt(16) - 8));
                     if (safe != null) {
                         if (!safe.getChunk().isLoaded()) safe.getChunk().load(true);
                         if (!off.entity.getLocation().getChunk().isLoaded()) off.entity.getLocation().getChunk().load(true);
                         off.entity.teleport(safe);
                     }
                     return;
-                } else if (nearestDist > 16.0) {
-                    // Caminata tranquila y serena hacia el perímetro a paso normal
+                } else if (nearestDist > 12.0) {
                     try {
                         if (off.entity instanceof CraftCreature) {
                             ((CraftCreature) off.entity).getHandle().getNavigation().a(
                                     nearestPlayer.getLocation().getX(),
                                     nearestPlayer.getLocation().getY(),
-                                    nearestPlayer.getLocation().getZ(), 1.0);
+                                    nearestPlayer.getLocation().getZ(), 1.05);
                         }
                     } catch (Exception ignored) {}
                     return;
@@ -743,15 +829,15 @@ public class PoliceManager {
             }
         }
 
-        // 3. ACTITUD TRANQUILA Y RESPETUOSA CON CIUDADANOS PACÍFICOS (Muy sutil, sin spam)
+        // 4. ACTITUD TRANQUILA Y RESPETUOSA CON CIUDADANOS PACÍFICOS
         if (off.suspicionCooldown <= 0 && random.nextDouble() < 0.02) {
             for (Entity e : off.entity.getNearbyEntities(6, 2, 6)) {
                 if (e instanceof Player) {
                     Player p = (Player) e;
                     String[] friendlyMessages = new String[] {
                         "Buenas, " + p.getName() + ". Circule con tranquilidad.",
-                        "Saludos, ciudadano. Buen día.",
-                        "Zona vigilada y en calma, " + p.getName() + "."
+                        "Saludos, ciudadano. Zona bajo vigilancia.",
+                        "En patrulla de seguridad, " + p.getName() + "."
                     };
                     String msg = friendlyMessages[random.nextInt(friendlyMessages.length)];
                     p.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.GRAY + msg);
@@ -761,10 +847,14 @@ public class PoliceManager {
             }
         }
 
-        // 4. PATRULLA POR WAYPOINTS A PASO NORMAL Y SIN TELEPORTS BRUSCOS
+        // 5. PATRULLA POR WAYPOINTS LOCALES A PASO NORMAL
         if (off.activeSector != null && !off.activeSector.waypoints.isEmpty()) {
             Location targetWp = off.activeSector.waypoints.get(off.waypointIndex);
-            off.waypointIndex = (off.waypointIndex + 1) % off.activeSector.waypoints.size();
+            double distSq = pLoc.distanceSquared(targetWp);
+            if (distSq < 3.5 * 3.5) {
+                off.waypointIndex = (off.waypointIndex + 1) % off.activeSector.waypoints.size();
+                targetWp = off.activeSector.waypoints.get(off.waypointIndex);
+            }
 
             World targetWorld = targetWp.getWorld();
             int chunkX = targetWp.getBlockX() >> 4;
@@ -773,8 +863,6 @@ public class PoliceManager {
                 targetWorld.loadChunk(chunkX, chunkZ);
             }
 
-            double distSq = pLoc.distanceSquared(targetWp);
-            // Solo teleportar si está desfasado a más de 70 bloques o en alturas imposibles (atascado en bedrock/vacío)
             if (distSq > 70.0 * 70.0 || Math.abs(pLoc.getBlockY() - targetWp.getBlockY()) > 16) {
                 Location safe = findSafeStandingLocation(targetWp);
                 if (safe != null) {
@@ -790,6 +878,50 @@ public class PoliceManager {
                 } catch (Exception ignored) {}
             }
         }
+    }
+
+    public Block findNearbyDoor(Location loc, int radius) {
+        if (loc == null || loc.getWorld() == null) return null;
+        World w = loc.getWorld();
+        int cx = loc.getBlockX();
+        int cy = loc.getBlockY();
+        int cz = loc.getBlockZ();
+
+        for (int r = 1; r <= radius; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    for (int dy = -1; dy <= 2; dy++) {
+                        Block b = w.getBlockAt(cx + dx, cy + dy, cz + dz);
+                        if (isDoorBlock(b)) {
+                            return b;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    public Location findInteriorBehindDoor(Block door) {
+        if (door == null) return null;
+        Block master = getMasterDoorBlock(door);
+        BlockFace[] faces = new BlockFace[] { BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST };
+        for (BlockFace face : faces) {
+            Block step2 = master.getRelative(face, 2);
+            if (step2.getRelative(BlockFace.DOWN).getType().isSolid() && !step2.getType().isSolid()) {
+                boolean hasRoof = false;
+                for (int dy = 2; dy <= 6; dy++) {
+                    if (step2.getRelative(0, dy, 0).getType().isSolid()) {
+                        hasRoof = true;
+                        break;
+                    }
+                }
+                if (hasRoof) {
+                    return step2.getLocation().add(0.5, 0.0, 0.5);
+                }
+            }
+        }
+        return master.getRelative(BlockFace.NORTH, 2).getLocation().add(0.5, 0.0, 0.5);
     }
 
     private Location findSafeStandingLocation(Location loc) {
@@ -1092,24 +1224,29 @@ public class PoliceManager {
     }
 
     public void witnessCrime(Player culprit, String crimeTitle, String description, Location crimeLocation) {
+        if (culprit == null || !culprit.isOnline()) return;
+        if (culprit.getName().equalsIgnoreCase(plugin.getOwnerName())) return;
+
         PoliceOfficer witnessingOfficer = null;
         double minDist = Double.MAX_VALUE;
 
-        // Comprobar qué agente tiene línea visual directa hacia el delito
+        // Detección física directa por visión (35 bloques) O acústica inmediata por cercanía (30 bloques)
         for (PoliceOfficer off : officers.values()) {
-            if (off.isAlive() && !off.killedThisSession && off.canSee(crimeLocation)) {
+            if (off.isAlive() && !off.killedThisSession && off.entity != null && off.entity.getWorld().equals(crimeLocation.getWorld())) {
                 double dist = off.entity.getLocation().distance(crimeLocation);
-                if (dist < minDist) {
+                boolean visible = (dist <= 35.0 && off.canSee(crimeLocation));
+                boolean audible = (dist <= 30.0); // Ruidos fuertes: rotura de estructuras, picos, alarmas
+                if ((visible || audible) && dist < minDist) {
                     minDist = dist;
                     witnessingOfficer = off;
                 }
             }
         }
 
-        if (witnessingOfficer == null) return; // Ningún policía vio el delito físicamente
+        if (witnessingOfficer == null) return; // Ningún policía estaba cerca para presenciarlo
 
         witnessingOfficer.entity.getWorld().playSound(witnessingOfficer.entity.getLocation(), Sound.NOTE_PLING, 1.5f, 2.0f);
-        witnessingOfficer.entity.getWorld().playSound(witnessingOfficer.entity.getLocation(), Sound.IRONGOLEM_HIT, 1.0f, 1.0f);
+        witnessingOfficer.entity.getWorld().playSound(witnessingOfficer.entity.getLocation(), Sound.IRONGOLEM_THROW, 1.0f, 1.2f);
 
         Vector dir = crimeLocation.toVector().subtract(witnessingOfficer.entity.getLocation().toVector());
         witnessingOfficer.entity.teleport(witnessingOfficer.entity.getLocation().setDirection(dir));
@@ -1121,38 +1258,117 @@ public class PoliceManager {
         Bukkit.broadcastMessage(ChatColor.YELLOW + "  Infracción presenciada en " + ChatColor.AQUA + locDesc + ChatColor.YELLOW + ": " + ChatColor.WHITE + crimeTitle + " (" + description + ")");
         Bukkit.broadcastMessage(ChatColor.DARK_BLUE + "══════════════════════════════════════════════════");
 
-        // Actuación física inmediata (punto medio correcto: intervención activa)
+        // Actuación física inmediata y severa: intervención táctica
         final PoliceOfficer cop = witnessingOfficer;
         cop.targetPlayer = culprit;
-        cop.pursuitTicks = 16; // 8 segundos de persecución/vigilancia activa sobre el sospechoso
+        cop.pursuitTicks = 40; // 20 segundos de persecución/vigilancia activa sobre el sospechoso
 
         try {
             if (cop.entity instanceof CraftCreature) {
-                ((CraftCreature) cop.entity).getHandle().getNavigation().a(culprit.getLocation().getX(), culprit.getLocation().getY(), culprit.getLocation().getZ(), 1.20);
+                ((CraftCreature) cop.entity).getHandle().getNavigation().a(culprit.getLocation().getX(), culprit.getLocation().getY(), culprit.getLocation().getZ(), 1.30);
             }
         } catch (Exception ignored) {}
+
+        // Desarme táctico si porta herramientas o armas con las que comete el delito
+        ItemStack inHand = culprit.getItemInHand();
+        if (inHand != null && inHand.getType() != Material.AIR) {
+            culprit.getWorld().dropItemNaturally(culprit.getLocation(), inHand.clone());
+            culprit.setItemInHand(new ItemStack(Material.AIR));
+            culprit.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "⚡ ¡LA POLICÍA TE HA DESARMADO POR COMETER UN DELITO!");
+        }
+
+        // Efecto de contención (frena la huida)
+        culprit.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 1));
 
         final String finalCrime = crimeTitle;
         if (cop.entity.getWorld().equals(culprit.getWorld())) {
             double distToCulprit = cop.entity.getLocation().distance(culprit.getLocation());
-            if (distToCulprit <= 3.8) {
+            if (distToCulprit <= 4.0) {
                 deliverBatonStrike(cop, culprit, "Infracción presenciada: " + crimeTitle);
             } else {
-                // Programar intento de porrazo al llegar si está a distancia media
                 Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
                     @Override
                     public void run() {
-                        if (cop.isAlive() && culprit.isOnline() && cop.entity.getWorld().equals(culprit.getWorld())) {
-                            if (cop.entity.getLocation().distance(culprit.getLocation()) <= 3.8) {
+                        if (cop.isAlive() && culprit.isOnline() && cop.entity != null && cop.entity.getWorld().equals(culprit.getWorld())) {
+                            if (cop.entity.getLocation().distance(culprit.getLocation()) <= 4.0) {
                                 deliverBatonStrike(cop, culprit, "Infracción presenciada: " + finalCrime);
                             }
                         }
                     }
-                }, 15L);
+                }, 14L);
             }
         }
 
         applyPoliceSanction(witnessingOfficer, culprit, crimeTitle);
+    }
+
+    public void witnessPvP(Player attacker, Player victim, Location crimeLocation) {
+        if (attacker == null || victim == null || !attacker.isOnline() || !victim.isOnline()) return;
+        if (attacker.equals(victim)) return;
+        if (attacker.getName().equalsIgnoreCase(plugin.getOwnerName())) return;
+
+        PoliceOfficer witnessingOfficer = null;
+        double minDist = Double.MAX_VALUE;
+
+        // Detección física directa o acústica por gritos y golpes
+        for (PoliceOfficer off : officers.values()) {
+            if (off.isAlive() && !off.killedThisSession && off.entity != null && off.entity.getWorld().equals(crimeLocation.getWorld())) {
+                double dist = off.entity.getLocation().distance(crimeLocation);
+                boolean visible = (dist <= 35.0 && off.canSee(crimeLocation));
+                boolean audible = (dist <= 30.0); // Oye la agresión y golpes cercanos
+                if ((visible || audible) && dist < minDist) {
+                    minDist = dist;
+                    witnessingOfficer = off;
+                }
+            }
+        }
+
+        if (witnessingOfficer == null) return;
+
+        final PoliceOfficer cop = witnessingOfficer;
+        cop.targetPlayer = attacker;
+        cop.pursuitTicks = 50; // 25 segundos de persecución activa al agresor
+
+        cop.entity.getWorld().playSound(cop.entity.getLocation(), Sound.NOTE_PLING, 1.5f, 2.0f);
+        cop.entity.getWorld().playSound(cop.entity.getLocation(), Sound.IRONGOLEM_THROW, 1.0f, 1.2f);
+
+        Vector dir = crimeLocation.toVector().subtract(cop.entity.getLocation().toVector());
+        cop.entity.teleport(cop.entity.getLocation().setDirection(dir));
+
+        try {
+            if (cop.entity instanceof CraftCreature) {
+                ((CraftCreature) cop.entity).getHandle().getNavigation().a(
+                        attacker.getLocation().getX(), attacker.getLocation().getY(), attacker.getLocation().getZ(), 1.35);
+            }
+        } catch (Exception ignored) {}
+
+        // Desarme táctico fulminante del agresor
+        ItemStack inHand = attacker.getItemInHand();
+        if (inHand != null && inHand.getType() != Material.AIR) {
+            attacker.getWorld().dropItemNaturally(attacker.getLocation(), inHand.clone());
+            attacker.setItemInHand(new ItemStack(Material.AIR));
+            attacker.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "⚡ ¡LA POLICÍA TE HA DESARMADO DE INMEDIATO POR AGRESIÓN!");
+        }
+
+        // Neutralización para que no pueda seguir pegando a la víctima
+        attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 140, 2));
+        attacker.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 140, 2));
+
+        // Empujar al agresor lejos de la víctima
+        Vector push = attacker.getLocation().toVector().subtract(victim.getLocation().toVector()).setY(0);
+        if (push.lengthSquared() > 0.01) {
+            push.normalize().multiply(1.25).setY(0.28);
+            attacker.setVelocity(push);
+        }
+
+        String locDesc = (cop.activeSector != null ? cop.activeSector.name : "Vía Pública");
+        Bukkit.broadcastMessage(ChatColor.DARK_BLUE + "══════════════════════════════════════════════════");
+        Bukkit.broadcastMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + cop.name + ": " + ChatColor.RED + "¡ALTO AL FUEGO! ¡ALTO EN NOMBRE DE LA LEY!");
+        Bukkit.broadcastMessage(ChatColor.YELLOW + "  Agresión de " + ChatColor.RED + attacker.getName() + ChatColor.YELLOW + " contra " + ChatColor.GREEN + victim.getName() + ChatColor.YELLOW + " intervenida en " + ChatColor.AQUA + locDesc + ChatColor.YELLOW + ".");
+        Bukkit.broadcastMessage(ChatColor.DARK_BLUE + "══════════════════════════════════════════════════");
+
+        deliverBatonStrike(cop, attacker, "Agresión física ilegal contra " + victim.getName());
+        applyPoliceSanction(cop, attacker, "Agresión física a ciudadano (" + victim.getName() + ")");
     }
 
     public void applyPoliceSanction(PoliceOfficer officer, final Player culprit, String reason) {

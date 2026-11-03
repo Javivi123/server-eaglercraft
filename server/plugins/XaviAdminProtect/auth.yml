@@ -1,0 +1,30 @@
+players:
+  p_diddy:
+    hash: 17e116a1b0a5eb86946c10285046a52162809acc8014ae3faab7e598974aa695
+    salt: 460811aee1
+    last_ip: 0:0:0:0:0:0:0:1
+    registered_at: '2026-11-03 20:28:08'
+    last_login: '2026-11-03 21:24:47'
+  taetti:
+    hash: c01614fe8502fb979921609d6c3f51d77131facf2e54d63ccccc2fbb3e2c582a
+    salt: 213cc094ba
+    last_ip: 0:0:0:0:0:0:0:1
+    registered_at: '2026-11-03 20:50:03'
+  el_guille:
+    hash: 76343ee31dd9d886e7abedd56027f708ec968c5528b7890068e0ecc949675875
+    salt: 931b819d37
+    last_ip: 0:0:0:0:0:0:0:1
+    registered_at: '2026-11-03 20:51:11'
+    last_login: '2026-11-03 21:05:54'
+  xavi:
+    hash: 5dc12db64c7e582ee13c40c43b7dab63a5dd663d20d8c00e009f7b7ed598532a
+    salt: 55ed9cb971
+    last_ip: 0:0:0:0:0:0:0:1
+    registered_at: '2026-11-03 20:51:22'
+    last_login: '2026-11-03 21:24:43'
+  leo:
+    hash: bbbbc84f42717f03cc6900b6d7523e52c2cb92cc13cc79efd657887b13da9682
+    salt: 2ddee4fdbb
+    last_ip: 0:0:0:0:0:0:0:1
+    registered_at: '2026-11-03 21:00:14'
+    last_login: '2026-11-03 21:24:56'
