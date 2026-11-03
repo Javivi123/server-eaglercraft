@@ -1,7 +1,7 @@
 $java = "C:\Users\javsr\Downloads\Eaglercraft_Server\jre\bin\java.exe"
 $ecj = "C:\Users\javsr\.gemini\antigravity\brain\029cb84c-86eb-4b50-a7e0-a172b7ad5899\scratch\ecj.jar"
 $cp = "C:\Users\javsr\Downloads\Eaglercraft_Server\server\cache\patched_1.8.8.jar"
-$srcDir = "C:\Users\javsr\.gemini\antigravity\brain\029cb84c-86eb-4b50-a7e0-a172b7ad5899\scratch\plugin_src"
+$srcDir = "C:\Users\javsr\Downloads\Eaglercraft_Server\plugin_src"
 $outDir = "C:\Users\javsr\.gemini\antigravity\brain\029cb84c-86eb-4b50-a7e0-a172b7ad5899\scratch\plugin_out"
 $scratchJar = "C:\Users\javsr\.gemini\antigravity\brain\029cb84c-86eb-4b50-a7e0-a172b7ad5899\scratch\XaviAdminProtect.jar"
 $targetJar = "C:\Users\javsr\Downloads\Eaglercraft_Server\server\plugins\XaviAdminProtect.jar"

@@ -1031,8 +1031,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                         victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 2));
                         return;
                     }
-                    // Porrazo reglamentario: daño no letal moderado de 3.0 HP (1.5 corazones)
-                    event.setDamage(3.0);
+                    // Porrazo reglamentario: daño proporcional de contención
+                    if (event.getDamage() < 3.0) {
+                        event.setDamage(3.0);
+                    }
                     return;
                 } else {
                     // Si ataca a mobs hostiles que amenazan la paz, daño reglamentario

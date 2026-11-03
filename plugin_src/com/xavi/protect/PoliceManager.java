@@ -1,6 +1,10 @@
 package com.xavi.protect;
 
 import net.minecraft.server.v1_8_R3.EntityCreature;
+import net.minecraft.server.v1_8_R3.EntityInsentient;
+import net.minecraft.server.v1_8_R3.GenericAttributes;
+import net.minecraft.server.v1_8_R3.IChatBaseComponent;
+import net.minecraft.server.v1_8_R3.PacketPlayOutTitle;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -12,6 +16,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftCreature;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Creature;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -813,6 +818,22 @@ public class PoliceManager {
         return safe;
     }
 
+    public void sendTitle(Player p, String title, String subtitle) {
+        if (p == null || !p.isOnline()) return;
+        try {
+            CraftPlayer cp = (CraftPlayer) p;
+            PacketPlayOutTitle length = new PacketPlayOutTitle(5, 45, 15);
+            IChatBaseComponent cTitle = IChatBaseComponent.ChatSerializer.a("{\"text\":\"" + title + "\"}");
+            PacketPlayOutTitle pTitle = new PacketPlayOutTitle(PacketPlayOutTitle.EnumTitleAction.TITLE, cTitle);
+            IChatBaseComponent cSub = IChatBaseComponent.ChatSerializer.a("{\"text\":\"" + subtitle + "\"}");
+            PacketPlayOutTitle pSub = new PacketPlayOutTitle(PacketPlayOutTitle.EnumTitleAction.SUBTITLE, cSub);
+
+            cp.getHandle().playerConnection.sendPacket(length);
+            cp.getHandle().playerConnection.sendPacket(pTitle);
+            cp.getHandle().playerConnection.sendPacket(pSub);
+        } catch (Exception ignored) {}
+    }
+
     public void deliverBatonStrike(PoliceOfficer off, Player target, String reason) {
         if (off == null || !off.isAlive() || target == null || !target.isOnline()) return;
         if (target.getName().equalsIgnoreCase(plugin.getOwnerName())) return;
@@ -835,27 +856,31 @@ public class PoliceManager {
         if (target.getHealth() <= 4.0) {
             target.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Quedas neutralizado y bajo custodia policial! No te resistas más.");
             target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 120, 2));
+            sendTitle(target, ChatColor.BLUE + "🚔 [POLICÍA]", ChatColor.YELLOW + "¡Quedas bajo custodia! Mantén la distancia.");
             return;
         }
 
         // Empujón de retroceso (pushback)
         Vector push = target.getLocation().toVector().subtract(off.entity.getLocation().toVector()).setY(0);
         if (push.lengthSquared() > 0.01) {
-            push.normalize().multiply(0.85).setY(0.28);
+            push.normalize().multiply(0.95).setY(0.30);
             target.setVelocity(push);
         }
 
         // Daño controlado de porra (no letal)
-        target.damage(3.0, off.entity);
+        target.damage(3.5, off.entity);
 
         // Efectos de aturdimiento y control (taser / porrazo)
         target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 1)); // Slowness II por 4s
         target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 20, 0)); // Aturdimiento visual de 1s
 
         target.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.RED + "¡PORRAZO DE CONTENCIÓN! " + ChatColor.YELLOW + reason);
+        sendTitle(target, ChatColor.RED + "🚔 ¡ALTO A LA POLICÍA!", ChatColor.YELLOW + reason);
     }
 
     public void handleAttackOnPolice(Entity victimEntity, Player attacker) {
+        if (attacker == null || !attacker.isOnline()) return;
+
         PoliceOfficer off = getOfficerByEntity(victimEntity);
         if (off == null) {
             // Si no se encuentra directo, asignar al más cercano
@@ -872,49 +897,161 @@ public class PoliceManager {
         }
         if (off == null || !off.isAlive()) return;
 
-        boolean sawAttacker = off.canSee(attacker.getEyeLocation());
-
-        if (!sawAttacker) {
-            // Golpe por la espalda en sigilo (única forma de librarse del policía durante la sesión)
-            attacker.sendMessage(ChatColor.DARK_GRAY + "🗡 [Sigilo] Has golpeado al " + off.name + " por la espalda sin que te vea. No se ha enterado de quién fue.");
+        // Don Xavi es intocable y respetado
+        if (attacker.getName().equalsIgnoreCase(plugin.getOwnerName())) {
+            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.GREEN + "¡A sus órdenes, Don Xavi! Disculpe las molestias.");
             return;
         }
 
-        // Comprobación de tolerancia: Golpe accidental picando o talando
+        // Orientación previa antes del giro
+        Vector policeDir = off.entity.getLocation().getDirection().setY(0).normalize();
+        Vector toAttackerVec = attacker.getEyeLocation().toVector().subtract(off.entity.getEyeLocation().toVector());
+        Vector toAttackerFlat = toAttackerVec.clone().setY(0).normalize();
+        double dot = policeDir.dot(toAttackerFlat);
+
+        // Girar INMEDIATAMENTE al policía hacia los ojos del atacante
+        Location faceLoc = off.entity.getLocation().setDirection(toAttackerVec);
+        off.entity.teleport(faceLoc);
+
+        // Aumentar velocidad para persecución activa táctica
+        try {
+            if (off.entity instanceof CraftCreature) {
+                EntityInsentient nms = ((CraftCreature) off.entity).getHandle();
+                nms.getAttributeInstance(GenericAttributes.MOVEMENT_SPEED).setValue(0.32D);
+            }
+        } catch (Exception ignored) {}
+
+        // El sigilo solo es válido si el jugador está agachado (sneak), ataca estrictamente por la espalda (dot < -0.35)
+        boolean isStealth = attacker.isSneaking() && dot < -0.35;
+
         long now = System.currentTimeMillis();
         long last = lastHitTimestamp.containsKey(attacker.getName().toLowerCase()) ? lastHitTimestamp.get(attacker.getName().toLowerCase()) : 0L;
-        int hits = (now - last < 10000L) ? (playerAccidentalHits.containsKey(attacker.getName().toLowerCase()) ? playerAccidentalHits.get(attacker.getName().toLowerCase()) : 0) : 0;
+        int hits = (now - last < 15000L) ? (playerAccidentalHits.containsKey(attacker.getName().toLowerCase()) ? playerAccidentalHits.get(attacker.getName().toLowerCase()) : 0) : 0;
         hits++;
         playerAccidentalHits.put(attacker.getName().toLowerCase(), hits);
         lastHitTimestamp.put(attacker.getName().toLowerCase(), now);
 
-        Vector toAttacker = attacker.getLocation().toVector().subtract(off.entity.getLocation().toVector());
-        Location faceLoc = off.entity.getLocation().setDirection(toAttacker);
-        off.entity.teleport(faceLoc);
+        if (isStealth && hits == 1) {
+            // Golpe por la espalda en sigilo
+            attacker.sendMessage(ChatColor.DARK_GRAY + "🗡 [Sigilo] Has golpeado al " + off.name + " por la espalda en sigilo.");
+            off.entity.getWorld().playSound(off.entity.getLocation(), Sound.NOTE_SNARE_DRUM, 1.2f, 0.8f);
+            attacker.sendMessage(ChatColor.YELLOW + "🚔 [POLICÍA] " + off.name + ": ¡¿Quién anda ahí detrás?! ¡Te tengo en el punto de mira!");
+            return;
+        }
+
+        // --- GOLPE EN SU CARA / GOLPE DIRECTO DETECTADO ---
+        // Efectos visuales de impacto en la cara
+        Location hitLoc = off.entity.getEyeLocation().clone().add(off.entity.getLocation().getDirection().multiply(0.4));
+        off.entity.getWorld().playEffect(hitLoc, Effect.MOBSPAWNER_FLAMES, 0);
+        off.entity.getWorld().playEffect(hitLoc, Effect.VILLAGER_THUNDERCLOUD, 0);
+        off.entity.getWorld().playEffect(hitLoc, Effect.CRIT, 0);
+
+        // Sonidos de enfado y choque de porra
+        off.entity.getWorld().playSound(off.entity.getLocation(), Sound.IRONGOLEM_THROW, 1.3f, 0.9f);
+        off.entity.getWorld().playSound(off.entity.getLocation(), Sound.ANVIL_LAND, 0.8f, 1.6f);
+
+        // Fijar objetivo para persecución activa táctica
+        off.targetPlayer = attacker;
+        off.pursuitTicks = 80; // 40 segundos de alerta y persecución activa
 
         if (hits == 1) {
-            // Primer golpe: Totalmente comprensivo y tolerante (posible error de clic o accidente de trabajo)
-            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.YELLOW + "¡Cuidado con esa herramienta, " + attacker.getName() + "! Un golpe más a la autoridad y usaré la porra de reglamento.");
-            attacker.playSound(attacker.getLocation(), Sound.NOTE_PLING, 1.0f, 1.6f);
+            // 1er GOLPE EN LA CARA: CONTRAATAQUE DEFENSIVO INMEDIATO
+            sendTitle(attacker,
+                    ChatColor.BLUE + "" + ChatColor.BOLD + "🚔 ¡ALTO A LA POLICÍA!",
+                    ChatColor.YELLOW + "¡No agredas al " + off.name + " en la cara!");
+
+            attacker.sendMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.RED + "¡¿Qué haces pegándome en la cara, " + attacker.getName() + "?! " + ChatColor.YELLOW + "¡Atrás inmediatamente! ¡Un golpe más y quedas detenido y desarmado!");
+
+            // Empujón de contención
+            Vector push = attacker.getLocation().toVector().subtract(off.entity.getLocation().toVector()).setY(0);
+            if (push.lengthSquared() > 0.01) {
+                push.normalize().multiply(1.10).setY(0.32);
+                attacker.setVelocity(push);
+            }
+
+            // Descarga de porra / taser de advertencia
+            attacker.damage(4.0, off.entity);
+            attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 1)); // Slowness II por 5s
+            attacker.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 30, 0)); // Ceguera 1.5s
+            attacker.playSound(attacker.getLocation(), Sound.ITEM_BREAK, 1.2f, 1.5f);
+
+            if (plugin.getHonorManager() != null) {
+                plugin.getHonorManager().addHonor(attacker, -10, "Golpear en la cara al " + off.name);
+            }
             return;
         }
 
         if (hits == 2) {
-            // Segundo golpe: Punto medio - respuesta física con la porra y advertencia firme
-            off.targetPlayer = attacker;
-            off.pursuitTicks = 8;
-            deliverBatonStrike(off, attacker, "¡Te advertí que no agredieras a la autoridad! ¡Atrás y mantén las distancias!");
+            // 2º GOLPE EN LA CARA (CASO P_DIDDY): DETENCIÓN, DESARME TÁCTICO Y ESPOSADO
+            sendTitle(attacker,
+                    ChatColor.RED + "" + ChatColor.BOLD + "🚨 ¡DETENIDO Y REDUCIDO!",
+                    ChatColor.YELLOW + "¡Agresión directa a la autoridad policial!");
+
+            // Rayo cosmético espectacular sin fuego
+            attacker.getWorld().spigot().strikeLightningEffect(attacker.getLocation(), false);
+            attacker.getWorld().playSound(attacker.getLocation(), Sound.EXPLODE, 0.8f, 1.8f);
+            attacker.getWorld().playSound(attacker.getLocation(), Sound.ITEM_BREAK, 1.2f, 0.7f);
+
+            // DESARME TÁCTICO: Tira al suelo el arma o herramienta que lleva en la mano
+            ItemStack inHand = attacker.getItemInHand();
+            if (inHand != null && inHand.getType() != Material.AIR) {
+                attacker.getWorld().dropItemNaturally(attacker.getLocation(), inHand.clone());
+                attacker.setItemInHand(new ItemStack(Material.AIR));
+                attacker.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "⚡ ¡EL POLICÍA TE HA DESARMADO DE UN PORRAZO EN LA MANO!");
+            }
+
+            // ESPOSADO E INMOVILIZACIÓN TÁCTICA
+            attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 3)); // Slowness IV por 10s (casi inmóvil)
+            attacker.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 2)); // Weakness III por 10s (sin fuerza)
+            attacker.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 50, 0)); // Ceguera por 2.5s
+
+            // Fuerte derribo hacia atrás
+            Vector push = attacker.getLocation().toVector().subtract(off.entity.getLocation().toVector()).setY(0);
+            if (push.lengthSquared() > 0.01) {
+                push.normalize().multiply(1.40).setY(0.38);
+                attacker.setVelocity(push);
+            }
+
+            // Daño contundente respetando no-letalidad
+            if (attacker.getHealth() > 6.0) {
+                attacker.damage(6.0, off.entity);
+            } else if (attacker.getHealth() > 2.0) {
+                attacker.damage(attacker.getHealth() - 2.0, off.entity);
+            }
+
+            // Anuncio público a todo el servidor
+            Bukkit.broadcastMessage(ChatColor.DARK_RED + "══════════════════════════════════════════════════");
+            Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "🚨 [POLICÍA NACIONAL] ¡" + attacker.getName() + " ha sido REDUCIDO y ESPOSADO por golpear en la cara al " + off.name + "!");
+            Bukkit.broadcastMessage(ChatColor.YELLOW + "  El sujeto ha sido desarmado e inmovilizado bajo custodia policial.");
+            Bukkit.broadcastMessage(ChatColor.DARK_RED + "══════════════════════════════════════════════════");
+
+            plugin.addWarning(attacker.getName(), "Agredir al " + off.name + " en la cara (2 golpes)", "Policía");
+
+            if (plugin.getHonorManager() != null) {
+                plugin.getHonorManager().addHonor(attacker, -25, "Agresión directa en la cara a un policía");
+            }
             return;
         }
 
-        // A partir de 3 golpes continuados: se considera agresión reiterada flagrante
-        off.targetPlayer = attacker;
-        off.pursuitTicks = 16;
-        deliverBatonStrike(off, attacker, "¡Agresión reiterada a la autoridad! Quedas neutralizado.");
+        // 3 GOLPES O MÁS: AGRESIÓN REITERADA EXTREMA
+        sendTitle(attacker,
+                ChatColor.DARK_RED + "" + ChatColor.BOLD + "🚨 ¡FRACTURA Y NEUTRALIZACIÓN!",
+                ChatColor.RED + "¡Desacato extremo a la autoridad!");
 
-        Bukkit.broadcastMessage(ChatColor.BLUE + "🚔 [POLICÍA] " + off.name + ": " + ChatColor.RED + "¡Atención! " + attacker.getName() + " ha sido neutralizado por agresión reiterada a un agente.");
+        attacker.getWorld().spigot().strikeLightningEffect(attacker.getLocation(), false);
+        attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 300, 4));
+        attacker.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 300, 3));
+        attacker.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 80, 0));
 
-        applyPoliceSanction(off, attacker, "Golpear reiteradamente a un agente");
+        if (attacker.getHealth() > 4.0) {
+            attacker.damage(attacker.getHealth() - 2.0, off.entity);
+        }
+
+        Bukkit.broadcastMessage(ChatColor.DARK_RED + "══════════════════════════════════════════════════");
+        Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "🚨 [POLICÍA NACIONAL] ¡Agresión reiterada de " + attacker.getName() + " neutralizada con la máxima fuerza reglamentaria!");
+        Bukkit.broadcastMessage(ChatColor.DARK_RED + "══════════════════════════════════════════════════");
+
+        applyPoliceSanction(off, attacker, "Agresión reiterada y continuada en la cara a un agente");
     }
 
     public void handleAttackOnPolice(Player attacker) {
