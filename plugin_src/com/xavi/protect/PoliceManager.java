@@ -851,7 +851,7 @@ public class PoliceManager {
             // Si no se encuentra directo, asignar al más cercano
             double minDist = Double.MAX_VALUE;
             for (PoliceOfficer o : officers.values()) {
-                if (o.isAlive()) {
+                if (o.isAlive() && o.entity.getWorld().equals(attacker.getWorld())) {
                     double d = o.entity.getLocation().distance(attacker.getLocation());
                     if (d < minDist) {
                         minDist = d;
@@ -986,21 +986,23 @@ public class PoliceManager {
         } catch (Exception ignored) {}
 
         final String finalCrime = crimeTitle;
-        double distToCulprit = cop.entity.getLocation().distance(culprit.getLocation());
-        if (distToCulprit <= 3.8) {
-            deliverBatonStrike(cop, culprit, "Infracción presenciada: " + crimeTitle);
-        } else {
-            // Programar intento de porrazo al llegar si está a distancia media
-            Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
-                @Override
-                public void run() {
-                    if (cop.isAlive() && culprit.isOnline()) {
-                        if (cop.entity.getLocation().distance(culprit.getLocation()) <= 3.8) {
-                            deliverBatonStrike(cop, culprit, "Infracción presenciada: " + finalCrime);
+        if (cop.entity.getWorld().equals(culprit.getWorld())) {
+            double distToCulprit = cop.entity.getLocation().distance(culprit.getLocation());
+            if (distToCulprit <= 3.8) {
+                deliverBatonStrike(cop, culprit, "Infracción presenciada: " + crimeTitle);
+            } else {
+                // Programar intento de porrazo al llegar si está a distancia media
+                Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+                    @Override
+                    public void run() {
+                        if (cop.isAlive() && culprit.isOnline() && cop.entity.getWorld().equals(culprit.getWorld())) {
+                            if (cop.entity.getLocation().distance(culprit.getLocation()) <= 3.8) {
+                                deliverBatonStrike(cop, culprit, "Infracción presenciada: " + finalCrime);
+                            }
                         }
                     }
-                }
-            }, 15L);
+                }, 15L);
+            }
         }
 
         applyPoliceSanction(witnessingOfficer, culprit, crimeTitle);

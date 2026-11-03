@@ -73,6 +73,12 @@ import org.bukkit.craftbukkit.v1_8_R3.entity.CraftCreature;
 import net.minecraft.server.v1_8_R3.BlockPosition;
 import net.minecraft.server.v1_8_R3.IBlockData;
 import net.minecraft.server.v1_8_R3.EnumDirection;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import net.minecraft.server.v1_8_R3.PacketPlayInWindowClick;
+import net.minecraft.server.v1_8_R3.Container;
+import net.minecraft.server.v1_8_R3.EntityPlayer;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -232,10 +238,17 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         getLogger().info(" Sistema de Honor Estilo RDR2: ACTIVADO");
         getLogger().info(" Auto-Guardado cada 2 min y al apagar: ACTIVADO");
         getLogger().info("==================================================");
+
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            injectPacketFilter(p);
+        }
     }
 
     @Override
     public void onDisable() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            uninjectPacketFilter(p);
+        }
         getLogger().info("[XaviAdminProtect] Guardando jugadores y mundo antes de apagar...");
         saveWarnings();
         if (allianceManager != null) allianceManager.save();
@@ -613,6 +626,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         idleSeconds = 0;
         final Player p = event.getPlayer();
+        injectPacketFilter(p);
         if (p.getName().equalsIgnoreCase(ownerName)) {
             if (!p.isOp()) {
                 p.setOp(true);
@@ -664,6 +678,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
+        uninjectPacketFilter(event.getPlayer());
         if (Bukkit.getOnlinePlayers().size() <= 1) {
             idleSeconds = 0;
         }
@@ -1432,7 +1447,9 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             CraftWorld cw = (CraftWorld) world;
             BlockPosition pos = new BlockPosition(bedBlock.getX(), bedBlock.getY(), bedBlock.getZ());
             IBlockData data = cw.getHandle().getType(pos);
-            data.getBlock().interact(cw.getHandle(), pos, data, cp.getHandle(), EnumDirection.UP, 0.5f, 0.5f, 0.5f);
+            if (data.getBlock() instanceof net.minecraft.server.v1_8_R3.BlockBed) {
+                data.getBlock().interact(cw.getHandle(), pos, data, cp.getHandle(), EnumDirection.UP, 0.5f, 0.5f, 0.5f);
+            }
         } catch (Exception ex) {
             getLogger().warning("[BedProtect] Error al interactuar con cama: " + ex.getMessage());
         } finally {
@@ -1440,6 +1457,67 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 nmsCop.dead = false;
             }
         }
+    }
+
+    /**
+     * Filtro de seguridad de paquetes Netty para prevenir errores de límites de ranura (IndexOutOfBoundsException)
+     * causados por desincronizaciones de ventanas o clics rápidos en clientes web Eaglercraft.
+     */
+    public void injectPacketFilter(final Player player) {
+        if (player == null || !player.isOnline()) return;
+        try {
+            CraftPlayer cp = (CraftPlayer) player;
+            final EntityPlayer ep = cp.getHandle();
+            if (ep.playerConnection == null || ep.playerConnection.networkManager == null) return;
+            Channel channel = ep.playerConnection.networkManager.channel;
+            if (channel == null || !channel.isOpen()) return;
+
+            if (channel.pipeline().get("xavi_packet_filter") != null) {
+                channel.pipeline().remove("xavi_packet_filter");
+            }
+
+            channel.pipeline().addBefore("packet_handler", "xavi_packet_filter", new ChannelInboundHandlerAdapter() {
+                @Override
+                public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                    if (msg instanceof PacketPlayInWindowClick) {
+                        PacketPlayInWindowClick p = (PacketPlayInWindowClick) msg;
+                        int slot = p.b();
+                        int windowId = p.a();
+                        if (slot >= 0) {
+                            Container container = (windowId == 0) ? ep.defaultContainer : ep.activeContainer;
+                            if (container != null && container.c != null) {
+                                if (container.windowId == windowId && slot >= container.c.size()) {
+                                    // Ranura fuera de límites para el contenedor activo: descartar para evitar excepción fatal en el servidor
+                                    Bukkit.getScheduler().runTask(XaviAdminProtect.this, new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            if (player.isOnline()) {
+                                                player.updateInventory();
+                                            }
+                                        }
+                                    });
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    super.channelRead(ctx, msg);
+                }
+            });
+        } catch (Exception ignored) {}
+    }
+
+    public void uninjectPacketFilter(Player player) {
+        if (player == null) return;
+        try {
+            CraftPlayer cp = (CraftPlayer) player;
+            EntityPlayer ep = cp.getHandle();
+            if (ep.playerConnection == null || ep.playerConnection.networkManager == null) return;
+            Channel channel = ep.playerConnection.networkManager.channel;
+            if (channel != null && channel.pipeline().get("xavi_packet_filter") != null) {
+                channel.pipeline().remove("xavi_packet_filter");
+            }
+        } catch (Exception ignored) {}
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
