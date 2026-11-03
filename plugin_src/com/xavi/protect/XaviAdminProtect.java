@@ -66,6 +66,11 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.world.WorldInitEvent;
+import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
@@ -708,6 +713,37 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
         String[] parts = withoutSlash.split("\\s+");
         String cmd = parts[0].toLowerCase();
+
+        // Consulta rapida de estado del Nether, The End y Overworld
+        if (cmd.equals("dimensiones") || cmd.equals("mundos") || cmd.equals("worlds") || cmd.equals("dimension")) {
+            Player p = event.getPlayer();
+            p.sendMessage(ChatColor.GOLD + "========== [DIMENSIONES Y MUNDOS] ==========");
+            for (World w : Bukkit.getWorlds()) {
+                String env = "Desconocido";
+                ChatColor color = ChatColor.WHITE;
+                if (w.getEnvironment() == World.Environment.NORMAL) {
+                    env = "Overworld (Mundo Normal)";
+                    color = ChatColor.GREEN;
+                } else if (w.getEnvironment() == World.Environment.NETHER) {
+                    env = "Nether (Infierno)";
+                    color = ChatColor.RED;
+                } else if (w.getEnvironment() == World.Environment.THE_END) {
+                    env = "The End (El Fin)";
+                    color = ChatColor.DARK_PURPLE;
+                }
+                boolean ki = "true".equalsIgnoreCase(w.getGameRuleValue("keepInventory"));
+                p.sendMessage(ChatColor.YELLOW + "• " + color + "" + ChatColor.BOLD + w.getName()
+                        + ChatColor.GRAY + " (" + env + ")");
+                p.sendMessage(ChatColor.GRAY + "  - Chunks: " + ChatColor.WHITE + w.getLoadedChunks().length
+                        + ChatColor.GRAY + " | Entidades: " + ChatColor.WHITE + w.getEntities().size()
+                        + ChatColor.GRAY + " | Jugadores: " + ChatColor.AQUA + w.getPlayers().size());
+                p.sendMessage(ChatColor.GRAY + "  - keepInventory: " + (ki ? ChatColor.GREEN + "ACTIVADO" : ChatColor.RED + "DESACTIVADO")
+                        + ChatColor.GRAY + " | PvP: " + (w.getPVP() ? ChatColor.GREEN + "SI" : ChatColor.RED + "NO"));
+            }
+            p.sendMessage(ChatColor.GOLD + "============================================");
+            event.setCancelled(true);
+            return;
+        }
 
         // Soporte universal para /tp, /teleport, /minecraft:tp
         if (cmd.equals("tp") || cmd.equals("teleport") || cmd.equals("minecraft:tp")) {
@@ -1367,11 +1403,20 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 }
             }
 
+            // Excepciones para creación y activación de portales (Nether y The End)
+            if (type == Material.ENDER_PORTAL_FRAME) {
+                return;
+            }
+
             Zone z = getZoneAt(b.getLocation());
             if (z != null && !isTrusted(p)) {
                 if (event.getItem() != null && (event.getItem().getType() == Material.FLINT_AND_STEEL
                         || event.getItem().getType() == Material.FIREBALL
                         || event.getItem().getType() == Material.LAVA_BUCKET)) {
+                    if (b.getType() == Material.OBSIDIAN && event.getItem().getType() != Material.LAVA_BUCKET) {
+                        // Permitir encender portales al Nether en obsidiana sin falsos positivos
+                        return;
+                    }
                     event.setCancelled(true);
                     punishHouseGriefer(p, "quemar la casa", z);
                     return;
@@ -1409,6 +1454,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
         Location bedLoc = bedBlock.getLocation();
         World world = bedLoc.getWorld();
+        if (world.getEnvironment() != World.Environment.NORMAL) {
+            // En el Nether o The End, dejamos que vanilla maneje la explosión de la cama de forma normal
+            return;
+        }
 
         List<net.minecraft.server.v1_8_R3.Entity> nearbyPoliceNms = new ArrayList<net.minecraft.server.v1_8_R3.Entity>();
         boolean realMonsterNearby = false;
@@ -1518,6 +1567,60 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 channel.pipeline().remove("xavi_packet_filter");
             }
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * Soporte y optimización para teletransporte a través de portales (Nether y The End).
+     * Asegura que el PortalTravelAgent encuentre o cree portales limpios y sin desincronización.
+     */
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onPlayerPortal(PlayerPortalEvent event) {
+        if (event.isCancelled()) return;
+
+        Player p = event.getPlayer();
+        if (event.getCause() == PlayerTeleportEvent.TeleportCause.NETHER_PORTAL) {
+            event.useTravelAgent(true);
+            if (event.getPortalTravelAgent() != null) {
+                event.getPortalTravelAgent().setCanCreatePortal(true);
+                event.getPortalTravelAgent().setSearchRadius(128);
+                event.getPortalTravelAgent().setCreationRadius(16);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
+        Player p = event.getPlayer();
+        World toWorld = p.getWorld();
+        if (toWorld != null) {
+            if (keepInventoryEnabled) {
+                toWorld.setGameRuleValue("keepInventory", "true");
+            }
+            String wName = toWorld.getName().toLowerCase();
+            if (wName.contains("nether")) {
+                p.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "[Dimensión] "
+                        + ChatColor.RED + "Has entrado al " + ChatColor.GOLD + "Nether"
+                        + ChatColor.RED + ". ¡Cuidado con el fuego y los pigmen!");
+            } else if (wName.contains("the_end") || wName.contains("end")) {
+                p.sendMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "[Dimensión] "
+                        + ChatColor.LIGHT_PURPLE + "Has entrado a " + ChatColor.AQUA + "The End"
+                        + ChatColor.LIGHT_PURPLE + ". ¡Prepárate para la batalla!");
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onWorldLoad(WorldLoadEvent event) {
+        if (keepInventoryEnabled && event.getWorld() != null) {
+            event.getWorld().setGameRuleValue("keepInventory", "true");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onWorldInit(WorldInitEvent event) {
+        if (keepInventoryEnabled && event.getWorld() != null) {
+            event.getWorld().setGameRuleValue("keepInventory", "true");
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -2025,6 +2128,34 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
 
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         String c = cmd.getName().toLowerCase();
+
+        if (c.equals("dimensiones") || c.equals("mundos") || c.equals("worlds") || c.equals("dimension")) {
+            sender.sendMessage(ChatColor.GOLD + "========== [DIMENSIONES Y MUNDOS] ==========");
+            for (World w : Bukkit.getWorlds()) {
+                String env = "Desconocido";
+                ChatColor color = ChatColor.WHITE;
+                if (w.getEnvironment() == World.Environment.NORMAL) {
+                    env = "Overworld (Mundo Normal)";
+                    color = ChatColor.GREEN;
+                } else if (w.getEnvironment() == World.Environment.NETHER) {
+                    env = "Nether (Infierno)";
+                    color = ChatColor.RED;
+                } else if (w.getEnvironment() == World.Environment.THE_END) {
+                    env = "The End (El Fin)";
+                    color = ChatColor.DARK_PURPLE;
+                }
+                boolean ki = "true".equalsIgnoreCase(w.getGameRuleValue("keepInventory"));
+                sender.sendMessage(ChatColor.YELLOW + "• " + color + "" + ChatColor.BOLD + w.getName()
+                        + ChatColor.GRAY + " (" + env + ")");
+                sender.sendMessage(ChatColor.GRAY + "  - Chunks cargados: " + ChatColor.WHITE + w.getLoadedChunks().length
+                        + ChatColor.GRAY + " | Entidades: " + ChatColor.WHITE + w.getEntities().size()
+                        + ChatColor.GRAY + " | Jugadores: " + ChatColor.AQUA + w.getPlayers().size());
+                sender.sendMessage(ChatColor.GRAY + "  - keepInventory: " + (ki ? ChatColor.GREEN + "ACTIVADO" : ChatColor.RED + "DESACTIVADO")
+                        + ChatColor.GRAY + " | PvP: " + (w.getPVP() ? ChatColor.GREEN + "SI" : ChatColor.RED + "NO"));
+            }
+            sender.sendMessage(ChatColor.GOLD + "============================================");
+            return true;
+        }
 
         if (c.equals("scancasa") || c.equals("ajustarcasa") || c.equals("escanearcasa")) {
             scanAndProtectHouse(sender);

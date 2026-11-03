@@ -133,3 +133,6 @@ commands:
   policia:
     description: Comandos de administracion para el Oficial de Policia IA
     aliases: [police, agentetorres, cop]
+  dimensiones:
+    description: Consulta el estado del Nether, The End y Overworld
+    aliases: [mundos, worlds, dimension]
