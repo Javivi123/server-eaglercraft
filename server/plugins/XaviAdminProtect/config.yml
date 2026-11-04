@@ -8,7 +8,24 @@ anti-fire-spread: false
 global-build-lock: false
 trusted-friends: []
 public-blocks: {}
-keep-inventory: false
+keep-inventory: true
+player_beds:
+  p_diddy:
+    world: world
+    x: -10
+    y: 76
+    z: -79
+  xavi:
+    world: world
+    x: -279
+    y: 80
+    z: -5
+shared_houses:
+  norte_residencial:
+    - guille
+    - el_guille
+    - leo
+    - taetti
 zones:
   CasaPrincipal:
     world: world

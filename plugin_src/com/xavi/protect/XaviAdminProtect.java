@@ -581,15 +581,64 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
         }
     }
 
+    public boolean isSharedHouseMate(String playerA, String playerB) {
+        if (playerA == null || playerB == null) return false;
+        String a = playerA.trim().toLowerCase();
+        String b = playerB.trim().toLowerCase();
+        if (a.equals(b)) return true;
+
+        if (a.equals("el_guille") || a.equals("guille")) a = "guille";
+        if (b.equals("el_guille") || b.equals("guille")) b = "guille";
+        if (a.equals(b)) return true;
+
+        // Casa compartida permanente: Guille, Leo y Taetti comparten la misma vivienda
+        boolean aIsRoommate = a.equals("taetti") || a.equals("leo") || a.equals("guille");
+        boolean bIsRoommate = b.equals("taetti") || b.equals("leo") || b.equals("guille");
+        if (aIsRoommate && bIsRoommate) {
+            return true;
+        }
+
+        // Grupos configurables de casas compartidas en config.yml
+        ConfigurationSection sec = getConfig().getConfigurationSection("shared_houses");
+        if (sec != null) {
+            for (String groupKey : sec.getKeys(false)) {
+                List<String> members = sec.getStringList(groupKey);
+                if (members != null && !members.isEmpty()) {
+                    boolean aIn = false;
+                    boolean bIn = false;
+                    for (String m : members) {
+                        String mNorm = m.trim().toLowerCase();
+                        if (mNorm.equals("el_guille") || mNorm.equals("guille")) mNorm = "guille";
+                        if (mNorm.equals(a)) aIn = true;
+                        if (mNorm.equals(b)) bIn = true;
+                    }
+                    if (aIn && bIn) return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public String getHouseOwnerDisplayName(String rawOwner) {
+        if (rawOwner == null) return "otro ciudadano";
+        String norm = rawOwner.trim().toLowerCase();
+        if (norm.equals("taetti") || norm.equals("leo") || norm.equals("guille") || norm.equals("el_guille")) {
+            return "Guille, Leo y Taetti";
+        }
+        return rawOwner;
+    }
+
     public String getHouseOwnerNear(Player breaker, Block b) {
         if (b == null || breaker == null) return null;
         if (breaker.getName().equalsIgnoreCase(ownerName)) return null; // Don Xavi bypass
         if (!isHouseConstructionBlock(b.getType())) return null;
 
         World w = b.getWorld();
+        String breakerName = breaker.getName();
 
         // 1. ¿Tiene el propio destructor su cama en esta construccion inmediata?
-        Location breakerBed = getPlayerBed(breaker.getName());
+        Location breakerBed = getPlayerBed(breakerName);
         if (breakerBed != null && breakerBed.getWorld().equals(w)) {
             int distH = Math.max(Math.abs(breakerBed.getBlockX() - b.getX()), Math.abs(breakerBed.getBlockZ() - b.getZ()));
             int distV = Math.abs(breakerBed.getBlockY() - b.getY());
@@ -599,28 +648,59 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             }
         }
 
-        // 2. ¿Pertenece esta zona a la casa de otro jugador (su cama esta aqui)?
+        // 1.5 ¿Tiene alguno de sus compañeros de casa compartida (Guille, Leo, Taetti) su cama aqui?
+        for (Map.Entry<String, Location> entry : playerBeds.entrySet()) {
+            String mate = entry.getKey();
+            if (isSharedHouseMate(breakerName, mate)) {
+                Location mateBed = entry.getValue();
+                if (mateBed != null && mateBed.getWorld().equals(w)) {
+                    int distH = Math.max(Math.abs(mateBed.getBlockX() - b.getX()), Math.abs(mateBed.getBlockZ() - b.getZ()));
+                    int distV = Math.abs(mateBed.getBlockY() - b.getY());
+                    if (distH <= 25 && distV <= 14) {
+                        // Casa compartida autorizada para el compañero: PUEDE MODIFICARLA Y ROMPER SUS BLOQUES
+                        return null;
+                    }
+                }
+            }
+        }
+
+        // 1.6 ¿Tiene alguno de sus compañeros de casa cofres aqui?
+        if (chestManager != null) {
+            for (ChestManager.ChestData cd : chestManager.getAllChests().values()) {
+                if (isSharedHouseMate(breakerName, cd.owner) && cd.world.equalsIgnoreCase(w.getName())) {
+                    int distH = Math.max(Math.abs(cd.x - b.getX()), Math.abs(cd.z - b.getZ()));
+                    int distV = Math.abs(cd.y - b.getY());
+                    if (distH <= 18 && distV <= 10) {
+                        // Es la casa de su grupo: PUEDE MODIFICARLA Y ROMPER SUS BLOQUES
+                        return null;
+                    }
+                }
+            }
+        }
+
+        // 2. ¿Pertenece esta zona a la casa de otro jugador que NO sea compañero de casa?
         for (Map.Entry<String, Location> entry : playerBeds.entrySet()) {
             String owner = entry.getKey();
-            if (owner.equalsIgnoreCase(breaker.getName())) continue;
+            if (owner.equalsIgnoreCase(breakerName)) continue;
+            if (isSharedHouseMate(breakerName, owner)) continue; // Compañero de casa permitido
             Location bedLoc = entry.getValue();
             if (bedLoc != null && bedLoc.getWorld().equals(w)) {
                 int distH = Math.max(Math.abs(bedLoc.getBlockX() - b.getX()), Math.abs(bedLoc.getBlockZ() - b.getZ()));
                 int distV = Math.abs(bedLoc.getBlockY() - b.getY());
                 if (distH <= 25 && distV <= 14) {
-                    return owner; // ¡Es la casa de este jugador!
+                    return getHouseOwnerDisplayName(owner); // ¡Es la casa de este jugador!
                 }
             }
         }
 
-        // 3. ¿Hay cofres registrados de otro jugador en esta vivienda/construccion?
+        // 3. ¿Hay cofres registrados de otro jugador que NO sea compañero de casa?
         if (chestManager != null) {
             for (ChestManager.ChestData cd : chestManager.getAllChests().values()) {
-                if (!cd.owner.equalsIgnoreCase(breaker.getName()) && cd.world.equalsIgnoreCase(w.getName())) {
+                if (!cd.owner.equalsIgnoreCase(breakerName) && !isSharedHouseMate(breakerName, cd.owner) && cd.world.equalsIgnoreCase(w.getName())) {
                     int distH = Math.max(Math.abs(cd.x - b.getX()), Math.abs(cd.z - b.getZ()));
                     int distV = Math.abs(cd.y - b.getY());
                     if (distH <= 18 && distV <= 10) {
-                        return cd.owner; // Construccion protegida del dueño de los cofres
+                        return getHouseOwnerDisplayName(cd.owner); // Construccion protegida de este dueño
                     }
                 }
             }
@@ -1539,7 +1619,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                 if (owner != null) {
                     boolean isChestOwner = owner.equalsIgnoreCase(p.getName());
                     boolean isMaster = p.getName().equalsIgnoreCase(ownerName);
-                    if (!isChestOwner && !isMaster) {
+                    boolean isHouseMate = isSharedHouseMate(p.getName(), owner);
+                    if (!isChestOwner && !isMaster && !isHouseMate) {
                         event.setCancelled(true);
                         p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "[Cofres] "
                                 + ChatColor.RED + "¡No puedes romper el cofre de " + ChatColor.GOLD + owner + ChatColor.RED + "!");
@@ -1549,7 +1630,11 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                         return;
                     } else {
                         chestManager.removeChest(b);
-                        p.sendMessage(ChatColor.YELLOW + "[Cofres] Has roto un cofre protegido. Ha quedado liberado.");
+                        if (isHouseMate && !isChestOwner && !isMaster) {
+                            p.sendMessage(ChatColor.YELLOW + "[Cofres] Has retirado el cofre de tu compañero de casa (" + owner + "). Ha quedado liberado.");
+                        } else {
+                            p.sendMessage(ChatColor.YELLOW + "[Cofres] Has roto un cofre protegido. Ha quedado liberado.");
+                        }
                     }
                 }
             }
@@ -1562,7 +1647,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                     if (owner != null) {
                         boolean isChestOwner = owner.equalsIgnoreCase(p.getName());
                         boolean isMaster = p.getName().equalsIgnoreCase(ownerName);
-                        if (!isChestOwner && !isMaster) {
+                        boolean isHouseMate = isSharedHouseMate(p.getName(), owner);
+                        if (!isChestOwner && !isMaster && !isHouseMate) {
                             event.setCancelled(true);
                             p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "[Cofres] "
                                     + ChatColor.RED + "¡No puedes romper el bloque debajo del cofre de " + ChatColor.GOLD + owner + ChatColor.RED + "!");
@@ -1642,7 +1728,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                     if (nOwner != null) {
                         boolean isNeighborOwner = nOwner.equalsIgnoreCase(p.getName());
                         boolean isMaster = p.getName().equalsIgnoreCase(ownerName);
-                        if (!isNeighborOwner && !isMaster) {
+                        boolean isHouseMate = isSharedHouseMate(p.getName(), nOwner);
+                        if (!isNeighborOwner && !isMaster && !isHouseMate) {
                             event.setCancelled(true);
                             p.sendMessage(ChatColor.RED + "[Cofres] ¡No puedes colocar un cofre junto al cofre de " + ChatColor.GOLD + nOwner + ChatColor.RED + "!");
                             return;
@@ -1748,6 +1835,7 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                     } else {
                         boolean isChestOwner = owner.equalsIgnoreCase(p.getName());
                         boolean isMaster = p.getName().equalsIgnoreCase(ownerName);
+                        boolean isHouseMate = isSharedHouseMate(p.getName(), owner);
 
                         if (isChestOwner) {
                             // Permitido: el dueño abre su propio cofre
@@ -1755,6 +1843,10 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
                             // Permitido: Xavi abre el cofre con aviso informativo
                             p.sendMessage(ChatColor.GOLD + "[Cofre Admin] "
                                     + ChatColor.YELLOW + "Abriendo cofre de: " + ChatColor.WHITE + owner);
+                        } else if (isHouseMate) {
+                            // Permitido: Compañeros de la misma casa (Guille, Leo y Taetti)
+                            p.sendMessage(ChatColor.GOLD + "[Cofres] "
+                                    + ChatColor.YELLOW + "Accediendo al cofre de tu compañero de casa (" + ChatColor.WHITE + owner + ChatColor.YELLOW + ").");
                         } else {
                             // Denegado: otro jugador intenta abrirlo
                             event.setCancelled(true);
@@ -2162,7 +2254,8 @@ public class XaviAdminProtect extends JavaPlugin implements Listener {
             if (owner != null) {
                 boolean isChestOwner = owner.equalsIgnoreCase(p.getName());
                 boolean isMaster = p.getName().equalsIgnoreCase(ownerName);
-                if (!isChestOwner && !isMaster) {
+                boolean isHouseMate = isSharedHouseMate(p.getName(), owner);
+                if (!isChestOwner && !isMaster && !isHouseMate) {
                     event.setCancelled(true);
                     event.setResult(Event.Result.DENY);
                     p.closeInventory();

@@ -231,16 +231,16 @@ public class PoliceManager {
                 "Caminos y Almacén Central [Superficie]",
                 Color.fromRGB(22, 55, 95), Material.CHAINMAIL_HELMET, "central"));
 
-        // 3. Agente Morales - Guardia Residencial Norte (Casas de Taetti y Leo)
+        // 3. Agente Morales - Guardia Residencial Norte (Casa compartida de Guille, Leo y Taetti)
         officers.put("morales", new PoliceOfficer(
                 "morales", "Agente Morales", "Guardia Residencial Norte",
-                "Barrio Norte y Casas de Taetti y Leo [Superficie]",
+                "Barrio Norte y Casa de Guille, Leo y Taetti [Superficie]",
                 Color.fromRGB(20, 60, 120), Material.LEATHER_HELMET, "norte_residencial"));
 
         // 4. Agente Herrera - Unidad Táctica y Pacificación Norte
         officers.put("herrera", new PoliceOfficer(
                 "herrera", "Agente Herrera", "Guardia Táctico Norte",
-                "Interiores y Calles Residenciales Norte",
+                "Interiores y Calles de Casa de Guille, Leo y Taetti",
                 Color.fromRGB(15, 50, 100), Material.IRON_HELMET, "norte_residencial"));
 
         // 5. Agente Delgado - Guardia Residencial Este (Casa y Granja de Piccino)
@@ -372,10 +372,11 @@ public class PoliceManager {
         central.addWaypoint(new Location(w, -264.0, 76.0, -2.0));  // Calle este
         sectors.put(central.id, central);
 
-        // 2. Sector Residencial Norte: Casas de Taetti y Leo [Superficie]
-        PatrolSector norte = new PatrolSector("norte_residencial", "Barrio Residencial Norte (Taetti y Leo)", w.getName(), false);
-        norte.addWaypoint(new Location(w, -363.5, 96.0, -48.5)); // Interior casa Taetti
-        norte.addWaypoint(new Location(w, -366.5, 96.0, -44.5)); // Interior casa Leo
+        // 2. Sector Residencial Norte: Casa compartida de Guille, Leo y Taetti [Superficie]
+        PatrolSector norte = new PatrolSector("norte_residencial", "Barrio Residencial Norte (Casa de Guille, Leo y Taetti)", w.getName(), false);
+        norte.addWaypoint(new Location(w, -363.5, 96.0, -48.5)); // Interior zona Taetti
+        norte.addWaypoint(new Location(w, -366.5, 96.0, -44.5)); // Interior zona Leo
+        norte.addWaypoint(new Location(w, -360.5, 96.0, -48.5)); // Interior zona Guille
         norte.addWaypoint(new Location(w, -358.5, 96.0, -52.5)); // Terraza y mirador
         norte.addWaypoint(new Location(w, -370.5, 95.0, -40.5)); // Acceso colina
         sectors.put(norte.id, norte);

@@ -7,6 +7,12 @@ anti-explosion-destroy: true
 anti-fire-spread: true
 global-build-lock: false
 trusted-friends: []
+shared_houses:
+  norte_residencial:
+    - guille
+    - el_guille
+    - leo
+    - taetti
 zones:
   CasaPrincipal:
     world: world
